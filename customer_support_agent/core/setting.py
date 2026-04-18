@@ -98,7 +98,12 @@ class Settings(BaseSettings):
 
     def resolve(self, path: Path) -> Path:
         """Resolve relative paths against the workspace directory."""
-        return path if path.is_absolute() else self.workspace_dir / path
+        normalized_path = path.expanduser()
+        return (
+            normalized_path
+            if normalized_path.is_absolute()
+            else self.workspace_dir / normalized_path
+        )
 
     @property
     def db_file(self) -> Path:
