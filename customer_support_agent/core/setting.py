@@ -7,10 +7,13 @@ from pydantic import SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
+WORKSPACE_DIR = Path(__file__).resolve().parents[2]
+
+
 class Settings(BaseSettings):
 
     model_config = SettingsConfigDict(
-        env_file=".env",
+        env_file=WORKSPACE_DIR / ".env",
         env_file_encoding="utf-8",
         extra="ignore",
     )
@@ -27,7 +30,7 @@ class Settings(BaseSettings):
     google_embedding_model: str = "gemini-embedding-001"
     enable_local_embeddings: bool = False
 
-    workspace_dir: Path = Path(__file__).resolve().parents[2]
+    workspace_dir: Path = WORKSPACE_DIR
     data_dir: Path = Path("data")
     db_path: Path = Path("data/support.db")
     chroma_rag_dir: Path = Path("data/chroma_rag")
@@ -115,6 +118,7 @@ def ensure_directories(settings: Settings | None = None) -> None:
 
     for path in (
         config.resolve(config.data_dir),
+        config.db_file.parent,
         config.chroma_rag_path,
         config.chroma_mem0_path,
         config.knowledge_base_path,

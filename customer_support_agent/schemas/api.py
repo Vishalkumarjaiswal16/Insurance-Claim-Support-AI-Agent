@@ -1,7 +1,7 @@
 from __future__ import annotations
 from datetime import datetime
 from typing import Any, Literal
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 
 class TicketCreateRequest(BaseModel):
@@ -43,6 +43,8 @@ class DraftHighlights(BaseModel):
 
 
 class DraftToolCall(BaseModel):
+    model_config = ConfigDict(extra="allow")
+
     tool_name: str
     tool_call_id: str | None = None
     arguments: dict[str, Any] = Field(default_factory=dict)
@@ -51,22 +53,26 @@ class DraftToolCall(BaseModel):
     output: dict[str, Any] | None = None
     output_text: str
 
+
 class StructuredDraftContext(BaseModel):
+    model_config = ConfigDict(extra="allow")
+
     version: int = 2
     ticket: dict[str, Any] | None = None
     customer: dict[str, Any] | None = None
-    signals: DraftSignals | dict[str, Any] | None = None
-    highlights: DraftHighlights | dict[str, Any] | None = None
+    signals: DraftSignals | None = None
+    highlights: DraftHighlights | None = None
     memory_hits: list[dict[str, Any]] = Field(default_factory=list)
     knowledge_hits: list[dict[str, Any]] = Field(default_factory=list)
-    tool_calls: list[DraftToolCall | dict[str, Any]] = Field(default_factory=list)
+    tool_calls: list[DraftToolCall] = Field(default_factory=list)
     errors: list[str] = Field(default_factory=list)
+
 
 class DraftResponse(BaseModel):
     id: int
     ticket_id: int
     content: str
-    context_used: StructuredDraftContext | dict[str, Any] | None = None
+    context_used: StructuredDraftContext | None = None
     status: Literal["pending", "accepted", "discarded"]
     created_at: datetime
 
