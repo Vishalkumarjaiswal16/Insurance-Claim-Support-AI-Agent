@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from functools import lru_cache
 from pathlib import Path
 
@@ -7,13 +8,50 @@ from pydantic import SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
-WORKSPACE_DIR = Path(__file__).resolve().parents[2]
+def _find_project_root(start: Path) -> Path | None:
+    for candidate in (start, *start.parents):
+        if (candidate / "pyproject.toml").is_file():
+            return candidate
+    return None
+
+
+def _resolve_workspace_dir() -> Path:
+    env_workspace_dir = (
+        os.getenv("CUSTOMER_SUPPORT_AGENT_WORKSPACE_DIR") or os.getenv("WORKSPACE_DIR")
+    )
+    if env_workspace_dir:
+        return Path(env_workspace_dir).expanduser().resolve()
+
+    cwd_root = _find_project_root(Path.cwd().resolve())
+    if cwd_root is not None:
+        return cwd_root
+
+    file_root = _find_project_root(Path(__file__).resolve().parent)
+    if file_root is not None:
+        return file_root
+
+    return Path.cwd().resolve()
+
+
+WORKSPACE_DIR = _resolve_workspace_dir()
+
+
+def _resolve_env_file(workspace_dir: Path) -> Path:
+    env_file_override = (
+        os.getenv("CUSTOMER_SUPPORT_AGENT_ENV_FILE") or os.getenv("ENV_FILE")
+    )
+    if env_file_override:
+        return Path(env_file_override).expanduser().resolve()
+    return workspace_dir / ".env"
+
+
+ENV_FILE = _resolve_env_file(WORKSPACE_DIR)
 
 
 class Settings(BaseSettings):
 
     model_config = SettingsConfigDict(
-        env_file=WORKSPACE_DIR / ".env",
+        env_file=ENV_FILE,
         env_file_encoding="utf-8",
         extra="ignore",
     )
