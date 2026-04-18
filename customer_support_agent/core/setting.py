@@ -3,6 +3,7 @@ from __future__ import annotations
 from functools import lru_cache
 from pathlib import Path
 
+from pydantic import SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -16,13 +17,13 @@ class Settings(BaseSettings):
 
     app_name: str = "AI Copilot for Support Agents"
 
-    groq_api_key: str = ""
+    groq_api_key: SecretStr | None = None
     groq_model: str = "llama-3.1-8b-instant"
     llm_temperature: float = 0.2
 
 
-    openai_api_key: str = ""
-    google_api_key: str = ""
+    openai_api_key: SecretStr | None = None
+    google_api_key: SecretStr | None = None
     google_embedding_model: str = "gemini-embedding-001"
     enable_local_embeddings: bool = False
 
@@ -86,6 +87,22 @@ class Settings(BaseSettings):
             return "gemini-embedding-001"
 
         return model
+
+    @staticmethod
+    def _reveal_secret(secret: SecretStr | None) -> str:
+        return secret.get_secret_value() if secret else ""
+
+    @property
+    def groq_api_key_value(self) -> str:
+        return self._reveal_secret(self.groq_api_key)
+
+    @property
+    def openai_api_key_value(self) -> str:
+        return self._reveal_secret(self.openai_api_key)
+
+    @property
+    def google_api_key_value(self) -> str:
+        return self._reveal_secret(self.google_api_key)
 
 @lru_cache
 def get_settings() -> Settings:

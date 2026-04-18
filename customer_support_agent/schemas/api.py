@@ -1,4 +1,5 @@
 from __future__ import annotations
+from datetime import datetime
 from typing import Any, Literal
 from pydantic import BaseModel, EmailStr, Field
 
@@ -22,9 +23,9 @@ class TicketResponse(BaseModel):
     subject: str
     description: str
     status: str
-    priority: str
-    created_at: str
-    updated_at: str
+    priority: Literal["low", "medium", "high", "urgent"]
+    created_at: datetime
+    updated_at: datetime
 
 
 class DraftSignals(BaseModel):
@@ -66,8 +67,8 @@ class DraftResponse(BaseModel):
     ticket_id: int
     content: str
     context_used: StructuredDraftContext | dict[str, Any] | None = None
-    status: str
-    created_at: str
+    status: Literal["pending", "accepted", "discarded"]
+    created_at: datetime
 
 class DraftUpdateRequest(BaseModel):
     content: str | None = None
