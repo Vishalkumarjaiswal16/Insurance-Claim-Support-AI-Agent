@@ -83,10 +83,21 @@ class Settings(BaseSettings):
     api_host: str = "0.0.0.0"
     api_port: int = 8000
 
-    dashboard_api_url: str = "http://localhost:8000"
+    dashboard_api_url: str = ""
+
+    def model_post_init(self, __context) -> None:
+        if (self.dashboard_api_url or "").strip():
+            return
+
+        dashboard_host = (
+            "localhost" if self.api_host in {"0.0.0.0", "::", ""} else self.api_host
+        )
+        object.__setattr__(
+            self, "dashboard_api_url", f"http://{dashboard_host}:{self.api_port}"
+        )
 
     def resolve(self, path: Path) -> Path:
-        """Resolve relative paths against the project root."""
+        """Resolve relative paths against the workspace directory."""
         return path if path.is_absolute() else self.workspace_dir / path
 
     @property

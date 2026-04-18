@@ -1,6 +1,8 @@
 from __future__ import annotations
+
 from datetime import datetime
 from typing import Any, Literal
+
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 
@@ -76,9 +78,11 @@ class DraftResponse(BaseModel):
     status: Literal["pending", "accepted", "discarded"]
     created_at: datetime
 
+
 class DraftUpdateRequest(BaseModel):
     content: str | None = None
     status: Literal["pending", "accepted", "discarded"] | None = None
+
 
 class GenerateDraftResponse(BaseModel):
     ticket_id: int
@@ -87,6 +91,7 @@ class GenerateDraftResponse(BaseModel):
 
 class KnowledgeIngestRequest(BaseModel):
     clear_existing: bool = False
+
 
 class KnowledgeIngestResponse(BaseModel):
     files_indexed: int
@@ -98,7 +103,6 @@ class CustomerMemoriesResponse(BaseModel):
     customer_id: int
     customer_email: EmailStr
     memories: list[dict[str, Any]]
-
 
 
 class CustomerMemorySearchResponse(BaseModel):
