@@ -1,8 +1,9 @@
 from __future__ import annotations
 
+from contextlib import contextmanager
 import sqlite3
 import threading
-from typing import Any
+from typing import Any, Iterator
 
 from customer_support_agent.core.settings import ensure_directories, get_settings
 
@@ -19,9 +20,20 @@ def _connect_raw() -> sqlite3.Connection:
     conn.execute("PRAGMA busy_timeout = 5000")
     return conn
 
-def connect() -> sqlite3.Connection:
+@contextmanager
+def _managed_connection() -> Iterator[sqlite3.Connection]:
+    conn = _connect_raw()
+    try:
+        with conn:
+            yield conn
+    finally:
+        conn.close()
+
+@contextmanager
+def connect() -> Iterator[sqlite3.Connection]:
     init_db()
-    return _connect_raw()
+    with _managed_connection() as conn:
+        yield conn
 
 def row_to_dict(row: sqlite3.Row | None) -> dict[str, Any] | None:
     if row is None:
@@ -37,7 +49,7 @@ def init_db() -> None:
         if _DB_INITIALIZED:
             return
 
-        with _connect_raw() as conn:
+        with _managed_connection() as conn:
             conn.executescript(
                 """
                 CREATE TABLE IF NOT EXISTS customers (

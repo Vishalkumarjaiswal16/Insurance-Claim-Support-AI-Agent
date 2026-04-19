@@ -43,8 +43,8 @@ class CustomerRepository:
             except sqlite3.IntegrityError as exc:
                 # Another thread/process may have inserted the same unique email
                 # after the initial SELECT and before this INSERT.
-                message = str(exc)
-                if "UNIQUE constraint failed: customers.email" not in message:
+                existing = conn.execute("SELECT * FROM customers WHERE email = ?", (email,)).fetchone()
+                if existing is None:
                     raise
 
             created = conn.execute("SELECT * FROM customers WHERE email = ?", (email,)).fetchone()
