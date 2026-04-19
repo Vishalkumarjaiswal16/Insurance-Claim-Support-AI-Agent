@@ -22,8 +22,15 @@ class TicketsRepository:
                 (customer_id, subject, description, priority, status),
             )
             ticket_id = cursor.lastrowid
-            row = conn.execute("SELECT * FROM tickets WHERE id = ?", (ticket_id,)).fetchone()
-            return row_to_dict(row) or {}
+            
+        if ticket_id is None:
+            raise RuntimeError("Failed to determine ID for inserted ticket.")
+            
+        ticket = self.get_by_id(ticket_id)
+        if ticket is None:
+            raise RuntimeError(f"Inserted ticket could not be retrieved: id={ticket_id}")
+            
+        return ticket
 
     def list(self, limit: int = 100) -> list[dict[str, Any]]:
         with connect() as conn:
@@ -63,8 +70,8 @@ class TicketsRepository:
     def set_status(self, ticket_id: int, status: str) -> dict[str, Any] | None:
         with connect() as conn:
             conn.execute("UPDATE tickets SET status = ? WHERE id = ?", (status, ticket_id))
-            row = conn.execute("SELECT * FROM tickets WHERE id = ?", (ticket_id,)).fetchone()
-            return row_to_dict(row)
+            
+        return self.get_by_id(ticket_id)
 
     def count_open_for_customer(self, customer_email: str) -> int:
         with connect() as conn:
