@@ -20,19 +20,18 @@ class DraftsRepository:
                 VALUES (?, ?, ?, ?)
                 """,
                 (ticket_id, content, context_used, status),
-                )
+            )
 
             draft_id = cursor.lastrowid
             row = conn.execute("SELECT * FROM drafts WHERE id = ?", (draft_id,)).fetchone()
             return row_to_dict(row) or {}
-    
 
     def get_latest_for_ticket(self, ticket_id: int) -> dict[str, Any] | None:
         with connect() as conn:
             row = conn.execute(
                 """
                 SELECT *
-                FROM drafts;
+                FROM drafts
                 WHERE ticket_id = ?
                 ORDER BY created_at DESC
                 LIMIT 1
