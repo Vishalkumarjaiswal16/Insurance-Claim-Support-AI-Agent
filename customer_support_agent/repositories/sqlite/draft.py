@@ -1,11 +1,16 @@
 from __future__ import annotations
 
+import sqlite3
 from typing import Any
 
 from customer_support_agent.repositories.sqlite.base import connect, row_to_dict
 
 
 class DraftsRepository:
+    def _fetch_draft(self, conn: sqlite3.Connection, draft_id: int) -> dict[str, Any] | None:
+        row = conn.execute("SELECT * FROM drafts WHERE id = ?", (draft_id,)).fetchone()
+        return row_to_dict(row)
+
     def create(
         self,
         ticket_id: int,
@@ -23,8 +28,14 @@ class DraftsRepository:
             )
 
             draft_id = cursor.lastrowid
-            row = conn.execute("SELECT * FROM drafts WHERE id = ?", (draft_id,)).fetchone()
-            return row_to_dict(row) or {}
+            if draft_id is None:
+                raise RuntimeError("Failed to determine ID for inserted draft.")
+
+            draft = self._fetch_draft(conn, draft_id)
+            if draft is None:
+                raise RuntimeError(f"Inserted draft could not be retrieved: id={draft_id}")
+
+            return draft
 
     def get_latest_for_ticket(self, ticket_id: int) -> dict[str, Any] | None:
         with connect() as conn:
@@ -42,9 +53,7 @@ class DraftsRepository:
 
     def get_by_id(self, draft_id: int) -> dict[str, Any] | None:
         with connect() as conn:
-            row = conn.execute("SELECT * FROM drafts WHERE id = ?", (draft_id,)).fetchone()
-            return row_to_dict(row)
-
+            return self._fetch_draft(conn, draft_id)
 
     def update(
         self,
@@ -68,9 +77,7 @@ class DraftsRepository:
         with connect() as conn:
             values.append(draft_id)
             conn.execute(f"UPDATE drafts SET {', '.join(updates)} WHERE id = ?", values)
-            row = conn.execute("SELECT * FROM drafts WHERE id = ?", (draft_id,)).fetchone()
-            return row_to_dict(row)
-
+            return self._fetch_draft(conn, draft_id)
 
     def get_ticket_and_customer_by_draft(self, draft_id: int) -> dict[str, Any] | None:
         with connect() as conn:
