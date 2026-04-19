@@ -6,7 +6,7 @@ from typing import Any
 from customer_support_agent.repositories.sqlite.base import connect, row_to_dict
 
 
-class CustomerRepository:
+class CustomersRepository:
 
     def create_or_get(
         self,
