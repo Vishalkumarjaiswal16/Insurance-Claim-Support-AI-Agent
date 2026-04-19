@@ -1,10 +1,27 @@
 from __future__ import annotations
 
+import sqlite3
 from typing import Any
 
 from customer_support_agent.repositories.sqlite.base import connect, row_to_dict
 
 class TicketsRepository:
+    def _fetch_ticket(self, conn: sqlite3.Connection, ticket_id: int) -> dict[str, Any] | None:
+        row = conn.execute(
+            """
+            SELECT
+                t.*,
+                c.email AS customer_email,
+                c.name AS customer_name,
+                c.company AS customer_company
+            FROM tickets t
+            JOIN customers c ON c.id = t.customer_id
+            WHERE t.id = ?
+            """,
+            (ticket_id,),
+        ).fetchone()
+        return row_to_dict(row)
+
     def create(
         self,
         customer_id: int,
@@ -23,14 +40,14 @@ class TicketsRepository:
             )
             ticket_id = cursor.lastrowid
             
-        if ticket_id is None:
-            raise RuntimeError("Failed to determine ID for inserted ticket.")
-            
-        ticket = self.get_by_id(ticket_id)
-        if ticket is None:
-            raise RuntimeError(f"Inserted ticket could not be retrieved: id={ticket_id}")
-            
-        return ticket
+            if ticket_id is None:
+                raise RuntimeError("Failed to determine ID for inserted ticket.")
+                
+            ticket = self._fetch_ticket(conn, ticket_id)
+            if ticket is None:
+                raise RuntimeError(f"Inserted ticket could not be retrieved: id={ticket_id}")
+                
+            return ticket
 
     def list(self, limit: int = 100) -> list[dict[str, Any]]:
         with connect() as conn:
@@ -52,26 +69,12 @@ class TicketsRepository:
 
     def get_by_id(self, ticket_id: int) -> dict[str, Any] | None:
         with connect() as conn:
-            row = conn.execute(
-                """
-                SELECT
-                    t.*,
-                    c.email AS customer_email,
-                    c.name AS customer_name,
-                    c.company AS customer_company
-                FROM tickets t
-                JOIN customers c ON c.id = t.customer_id
-                WHERE t.id = ?
-                """,
-                (ticket_id,),
-            ).fetchone()
-            return row_to_dict(row)
+            return self._fetch_ticket(conn, ticket_id)
     
     def set_status(self, ticket_id: int, status: str) -> dict[str, Any] | None:
         with connect() as conn:
             conn.execute("UPDATE tickets SET status = ? WHERE id = ?", (status, ticket_id))
-            
-        return self.get_by_id(ticket_id)
+            return self._fetch_ticket(conn, ticket_id)
 
     def count_open_for_customer(self, customer_email: str) -> int:
         with connect() as conn:
