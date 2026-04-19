@@ -31,20 +31,26 @@ class CustomerRepository:
                     values.append(email)
                     conn.execute(f"UPDATE customers SET {', '.join(updates)} WHERE email = ?", values)
                 refreshed = conn.execute("SELECT * FROM customers WHERE email = ?", (email,)).fetchone()
-                return row_to_dict(refreshed) or {}
+                if refreshed is None:
+                    raise RuntimeError(f"Customer with email {email!r} was not found after update")
+                return row_to_dict(refreshed)
 
             try:
                 conn.execute(
                     "INSERT INTO customers (email, name, company) VALUES (?, ?, ?)",
                     (email, name, company),
                 )
-            except sqlite3.IntegrityError:
+            except sqlite3.IntegrityError as exc:
                 # Another thread/process may have inserted the same unique email
                 # after the initial SELECT and before this INSERT.
-                pass
+                message = str(exc)
+                if "UNIQUE constraint failed: customers.email" not in message:
+                    raise
 
             created = conn.execute("SELECT * FROM customers WHERE email = ?", (email,)).fetchone()
-            return row_to_dict(created) or {}
+            if created is None:
+                raise RuntimeError(f"Customer with email {email!r} was not found after insert")
+            return row_to_dict(created)
 
     def get_by_id(self, customer_id: int) -> dict[str, Any] | None:
         with connect() as conn:
@@ -53,6 +59,5 @@ class CustomerRepository:
 
     def get_by_email(self, email: str) -> dict[str, Any] | None:
         with connect() as conn:
-            # Note: Changed from 'id = ?' to 'email = ?' to query properly
             row = conn.execute("SELECT * FROM customers WHERE email = ?", (email,)).fetchone()
             return row_to_dict(row)
