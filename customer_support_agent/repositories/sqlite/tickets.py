@@ -63,7 +63,19 @@ class TicketsRepository:
     def set_status(self, ticket_id: int, status: str) -> dict[str, Any] | None:
         with connect() as conn:
             conn.execute("UPDATE tickets SET status = ? WHERE id = ?", (status, ticket_id))
-            row = conn.execute("SELECT * FROM tickets WHERE id = ?", (ticket_id,)).fetchone()
+            row = conn.execute(
+                """
+                SELECT
+                    t.*,
+                    c.email AS customer_email,
+                    c.name AS customer_name,
+                    c.company AS customer_company
+                FROM tickets t
+                JOIN customers c ON c.id = t.customer_id
+                WHERE t.id = ?
+                """,
+                (ticket_id,),
+            ).fetchone()
             return row_to_dict(row)
 
     def count_open_for_customer(self, customer_email: str) -> int:
