@@ -77,14 +77,15 @@ class TicketsRepository:
             return self._fetch_ticket(conn, ticket_id)
 
     def count_open_for_customer(self, customer_email: str) -> int:
+        normalized_email = customer_email.strip().lower()
         with connect() as conn:
             row = conn.execute(
                 """
                 SELECT COUNT(*) AS open_count
                 FROM tickets t
                 JOIN customers c ON c.id = t.customer_id
-                WHERE c.email = ? AND t.status = 'open'
+                WHERE lower(c.email) = ? AND t.status = 'open'
                 """,
-                (customer_email,),
+                (normalized_email,),
             ).fetchone()
             return int(row["open_count"]) if row else 0
