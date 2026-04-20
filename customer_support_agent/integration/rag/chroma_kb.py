@@ -13,10 +13,11 @@ from customer_support_agent.core.settings import Settings
 
 
 class KnowledgeBaseService:
-    def __init__(self, settings:Settings):
+    def __init__(self, settings: Settings):
         self._settings = settings
         self._client = chromadb.PersistentClient(path=str(settings.chroma_rag_path))
-        self._collection_name = "support_kb_gemini" if settings.google_api_key else "support_kb"
+        api_key_str = settings.google_api_key.get_secret_value().strip() if settings.google_api_key else ""
+        self._collection_name = "support_kb_gemini" if api_key_str else "support_kb"
         self._embedding_function = self._build_embedding_function()
         self._collection = self._client.get_or_create_collection(
             name=self._collection_name,
@@ -28,9 +29,10 @@ class KnowledgeBaseService:
         )
 
     def _build_embedding_function(self) -> Any:
-        if self._settings.google_api_key:
+        api_key_str = self._settings.google_api_key.get_secret_value().strip() if self._settings.google_api_key else ""
+        if api_key_str:
             # Chroma's GoogleGenaiEmbeddingFunction reads GOOGLE_API_KEY from env.
-            os.environ.setdefault("GOOGLE_API_KEY", self._settings.google_api_key)
+            os.environ.setdefault("GOOGLE_API_KEY", api_key_str)
             try:
                 return embedding_functions.GoogleGenaiEmbeddingFunction(
                     model_name=self._settings.effective_google_embedding_model,
@@ -93,7 +95,7 @@ class KnowledgeBaseService:
         
         results = self._collection.query(
             query_texts=[query],
-            n_results=top_k or self._settings.rag_top_k,
+            n_results=top_k if top_k is not None else self._settings.rag_top_k,
             include=["documents", "metadatas", "distances"],
         )
 

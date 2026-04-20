@@ -30,6 +30,7 @@ def _load_band(open_count: int) -> str:
 @tool
 def lookup_customer_plan(customer_email: str) -> str:
     """Return structured subscription and SLA details for a customer email."""
+    customer_email = customer_email.strip().lower()
     plans = [
         {"plan_tier": "free", "sla_hours": 48, "priority_queue": False},
         {"plan_tier": "starter", "sla_hours": 24, "priority_queue": False},
@@ -56,6 +57,7 @@ def lookup_customer_plan(customer_email: str) -> str:
 @tool
 def lookup_open_ticket_load(customer_email: str) -> str:
     """Return open ticket count and load band for a customer email."""
+    customer_email = customer_email.strip().lower()
     customers_repo = CustomersRepository()
     tickets_repo = TicketsRepository()
 
