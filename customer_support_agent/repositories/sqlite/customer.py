@@ -22,7 +22,7 @@ class CustomersRepository:
         with connect() as conn:
             # Check if customer already exists
             row = conn.execute(
-                "SELECT * FROM customers WHERE lower(email) = ?",
+                "SELECT * FROM customers WHERE email = ?",
                 (normalized_email,),
             ).fetchone()
             if row:
@@ -52,18 +52,18 @@ class CustomersRepository:
                     "INSERT INTO customers (email, name, company) VALUES (?, ?, ?)",
                     (normalized_email, name, company),
                 )
-            except sqlite3.IntegrityError as exc:
+            except sqlite3.IntegrityError:
                 # Another thread/process may have inserted the same unique email
                 # after the initial SELECT and before this INSERT.
                 existing = conn.execute(
-                    "SELECT * FROM customers WHERE lower(email) = ?",
+                    "SELECT * FROM customers WHERE email = ?",
                     (normalized_email,),
                 ).fetchone()
                 if existing is None:
                     raise
 
             created = conn.execute(
-                "SELECT * FROM customers WHERE lower(email) = ?",
+                "SELECT * FROM customers WHERE email = ?",
                 (normalized_email,),
             ).fetchone()
             if created is None:
@@ -81,7 +81,7 @@ class CustomersRepository:
         normalized_email = self._normalize_email(email)
         with connect() as conn:
             row = conn.execute(
-                "SELECT * FROM customers WHERE lower(email) = ?",
+                "SELECT * FROM customers WHERE email = ?",
                 (normalized_email,),
             ).fetchone()
             return row_to_dict(row)

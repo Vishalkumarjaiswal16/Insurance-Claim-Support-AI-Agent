@@ -4,7 +4,7 @@ import hashlib
 import json
 from typing import Any
 
-from langchain_core.tools import tool
+from langchain_core.tools import BaseTool, tool
 
 from customer_support_agent.repositories.sqlite.customer import CustomersRepository
 from customer_support_agent.repositories.sqlite.tickets import TicketsRepository
@@ -94,5 +94,5 @@ def lookup_open_ticket_load(customer_email: str) -> str:
         }
     )
 
-def get_support_tools() -> list:
+def get_support_tools() -> list[BaseTool]:
     return [lookup_customer_plan, lookup_open_ticket_load]

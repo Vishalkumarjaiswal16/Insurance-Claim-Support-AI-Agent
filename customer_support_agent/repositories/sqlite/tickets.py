@@ -84,7 +84,7 @@ class TicketsRepository:
                 SELECT COUNT(*) AS open_count
                 FROM tickets t
                 JOIN customers c ON c.id = t.customer_id
-                WHERE lower(c.email) = ? AND t.status = 'open'
+                WHERE c.email = ? AND t.status = 'open'
                 """,
                 (normalized_email,),
             ).fetchone()
