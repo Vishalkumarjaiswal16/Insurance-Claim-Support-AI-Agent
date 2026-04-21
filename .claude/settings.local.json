@@ -3,7 +3,7 @@
     "allow": [
       "Bash(python -c \"import sqlite3; conn=sqlite3.connect\\('data/support.db'\\); print\\([row[0] for row in conn.execute\\(\\\\\"SELECT name FROM sqlite_master WHERE type='table'\\\\\"\\).fetchall\\(\\)]\\)\")",
       "Bash(python -c \"import sqlite3; conn=sqlite3.connect\\('data/support.db'\\); print\\(conn.execute\\('SELECT COUNT\\(*\\) FROM customers'\\).fetchone\\(\\)\\); print\\(conn.execute\\('SELECT COUNT\\(*\\) FROM tickets'\\).fetchone\\(\\)\\); print\\(conn.execute\\('SELECT COUNT\\(*\\) FROM drafts'\\).fetchone\\(\\)\\)\")",
-      "Bash(python -c \"import sqlite3; conn=sqlite3.connect\\('data/support.db'\\); rows = conn.execute\\('SELECT * FROM customers'\\).fetchall\\(\\); [print\\(r\\) for r in rows]\")"
+      "Bash(python -c \"import sqlite3; conn=sqlite3.connect\\('data/support.db'\\); rows = conn.execute\\('SELECT id, name FROM customers LIMIT 10'\\).fetchall\\(\\); [print\\(r\\) for r in rows]\")"
     ]
   }
 }
