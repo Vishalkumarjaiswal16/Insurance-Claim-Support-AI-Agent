@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import logging
 import re
 import uuid
@@ -41,8 +42,7 @@ class CustomerMemoryStore:
                 google_api_key=api_key,
             )
 
-            # LangGraph index requires vector dimensions. Infer from one probe embedding.
-            dims = len(embeddings.embed_query("memory-dimension-probe"))
+            dims = self._settings.google_embedding_dims
             logger.info("memory.index.enabled provider=google_genai model=%s dims=%s", model_name, dims)
             return InMemoryStore(
                 index={
@@ -59,12 +59,14 @@ class CustomerMemoryStore:
             return InMemoryStore()
 
     def search(self, query: str, user_id: str, limit: int = 5) -> list[dict[str, Any]]:
+        _query_str = (query or "").strip()
         logger.info(
-            "memory.search.start user=%s limit=%s query=%r",
+            "memory.search.start user=%s limit=%s query_len=%s",
             self._namespace_label(user_id),
             max(1, limit),
-            (query or "").strip()[:120],
+            len(_query_str),
         )
+        logger.debug("memory.search.query user=%s query=%r", self._namespace_label(user_id), _query_str[:120])
         raw = self._search_items(query=query, user_id=user_id, limit=limit)
         normalized = self._normalize_results(raw, limit=limit)
         logger.info(
@@ -131,12 +133,14 @@ class CustomerMemoryStore:
             f"Approved recommendation: {accepted_draft.strip()}"
             f"{entity_text}"
         )
+        _subject_str = (ticket_subject or "").strip()
         logger.info(
-            "memory.add_resolution.start user=%s subject=%r entities=%s",
+            "memory.add_resolution.start user=%s subject_chars=%s entities=%s",
             self._namespace_label(user_id),
-            (ticket_subject or "").strip()[:120],
+            len(_subject_str),
             len(entity_links or []),
         )
+        logger.debug("memory.add_resolution.subject user=%s subject=%r", self._namespace_label(user_id), _subject_str[:120])
         self._create_memory(
             user_id=user_id,
             text=memory_text,
@@ -283,8 +287,10 @@ class CustomerMemoryStore:
 
     @staticmethod
     def _namespace_label(user_id: str) -> str:
-        normalized = re.sub(r"[^a-zA-Z0-9_-]+", "-", str(user_id or "").strip().lower()).strip("-")
-        return normalized or "unknown-user"
+        raw = str(user_id or "").strip()
+        if not raw:
+            return "unknown-user"
+        return "u-" + hashlib.sha256(raw.encode()).hexdigest()[:16]
 
     @staticmethod
     def _extract_key_from_manage_result(result: Any) -> str | None:

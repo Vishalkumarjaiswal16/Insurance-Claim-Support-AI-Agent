@@ -66,6 +66,7 @@ class Settings(BaseSettings):
     openai_api_key: SecretStr | None = None
     google_api_key: SecretStr | None = None
     google_embedding_model: str = "gemini-embedding-001"
+    google_embedding_dims: int = 3072
     enable_local_embeddings: bool = False
 
     workspace_dir: Path = WORKSPACE_DIR
