@@ -66,7 +66,7 @@ class Settings(BaseSettings):
     openai_api_key: SecretStr | None = None
     google_api_key: SecretStr | None = None
     google_embedding_model: str = "gemini-embedding-001"
-    google_embedding_dims: int = 3072
+    google_embedding_dims: int = 3072  # fallback for unknown models
     enable_local_embeddings: bool = False
 
     workspace_dir: Path = WORKSPACE_DIR
@@ -145,6 +145,15 @@ class Settings(BaseSettings):
             return "gemini-embedding-001"
 
         return model
+
+    @property
+    def effective_google_embedding_dims(self) -> int:
+        _MODEL_DIMS: dict[str, int] = {
+            "gemini-embedding-001": 3072,
+            "text-embedding-004": 768,
+            "embedding-001": 768,
+        }
+        return _MODEL_DIMS.get(self.effective_google_embedding_model, self.google_embedding_dims)
 
     @staticmethod
     def _reveal_secret(secret: SecretStr | None) -> str:

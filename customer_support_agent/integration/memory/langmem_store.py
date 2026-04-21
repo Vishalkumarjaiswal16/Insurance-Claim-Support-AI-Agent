@@ -42,7 +42,7 @@ class CustomerMemoryStore:
                 google_api_key=api_key,
             )
 
-            dims = self._settings.google_embedding_dims
+            dims = self._settings.effective_google_embedding_dims
             logger.info("memory.index.enabled provider=google_genai model=%s dims=%s", model_name, dims)
             return InMemoryStore(
                 index={
@@ -289,7 +289,7 @@ class CustomerMemoryStore:
     def _namespace_label(user_id: str) -> str:
         raw = str(user_id or "").strip()
         if not raw:
-            return "unknown-user"
+            raise ValueError("user_id must be provided and non-blank")
         return "u-" + hashlib.sha256(raw.encode()).hexdigest()[:16]
 
     @staticmethod
