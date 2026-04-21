@@ -3,7 +3,6 @@ from __future__ import annotations
 import hashlib
 import logging
 import re
-import uuid
 from typing import Any
 
 from langchain.embeddings import init_embeddings
@@ -201,9 +200,12 @@ class CustomerMemoryStore:
             )
             key = None
 
-        # Ensure deterministic persistence even if tool invocation fails unexpectedly.
+        # Fallback: persist directly when the LangMem tool fails. Key is content-derived
+        # so repeated retries for the same text are idempotent (no duplicate entries).
         if not key:
-            key = str(uuid.uuid4())
+            key = "fb-" + hashlib.sha256(
+                f"{self._namespace_label(user_id)}:{clean_text}".encode()
+            ).hexdigest()[:16]
             self._store.put(
                 self._namespace_for_user(user_id),
                 key=key,

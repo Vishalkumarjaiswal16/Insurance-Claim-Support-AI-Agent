@@ -150,8 +150,6 @@ class Settings(BaseSettings):
     def effective_google_embedding_dims(self) -> int:
         _MODEL_DIMS: dict[str, int] = {
             "gemini-embedding-001": 3072,
-            "text-embedding-004": 768,
-            "embedding-001": 768,
         }
         return _MODEL_DIMS.get(self.effective_google_embedding_model, self.google_embedding_dims)
 
