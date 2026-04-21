@@ -219,6 +219,13 @@ class CustomerMemoryStore:
             )
             return
 
+        if not key:
+            logger.warning(
+                "memory.create.metadata.skip_update reason=no_key user=%s",
+                self._namespace_label(user_id),
+            )
+            return
+
         if not metadata:
             logger.info(
                 "memory.create.metadata.skip_update system=langmem_tool user=%s key=%s",
