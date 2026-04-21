@@ -9,16 +9,14 @@ from langchain.embeddings import init_embeddings
 from langgraph.store.memory import InMemoryStore
 from langmem import create_manage_memory_tool
 
-from customer_support_agent.core.settings import Settings, get_settings
+from customer_support_agent.core.settings import Settings
 
 logger = logging.getLogger(__name__)
 
 
 class CustomerMemoryStore:
-    def __init__(self, settings: Settings, llm: Any):
+    def __init__(self, settings: Settings):
         self._settings = settings
-        _ = llm
-
         self._store = self._build_store()
         self._manage_memory_tool = create_manage_memory_tool(
             namespace=("memories", "{memory_user_id}"),
@@ -30,7 +28,8 @@ class CustomerMemoryStore:
         )
 
     def _build_store(self) -> InMemoryStore:
-        if not self._settings.google_api_key:
+        api_key = self._settings.google_api_key_value.strip()
+        if not api_key:
             logger.info("memory.index.disabled reason=no_google_api_key")
             return InMemoryStore()
 
@@ -39,7 +38,7 @@ class CustomerMemoryStore:
             embeddings = init_embeddings(
                 model=model_name,
                 provider="google_genai",
-                google_api_key=self._settings.google_api_key,
+                google_api_key=api_key,
             )
 
             # LangGraph index requires vector dimensions. Infer from one probe embedding.
