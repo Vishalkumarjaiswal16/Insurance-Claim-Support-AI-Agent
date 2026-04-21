@@ -296,10 +296,26 @@ class CustomerMemoryStore:
 
     @staticmethod
     def _extract_key_from_manage_result(result: Any) -> str | None:
-        text = str(result or "")
-        match = re.search(r"created memory\s+([a-fA-F0-9-]+)", text)
+        if result is None:
+            return None
+
+        # Structured result: dict with a key/id field
+        if isinstance(result, dict):
+            key = result.get("key") or result.get("id")
+            if key and isinstance(key, str):
+                return key
+
+        # Structured result: object with a key/id attribute
+        for attr in ("key", "id"):
+            val = getattr(result, attr, None)
+            if val and isinstance(val, str):
+                return val
+
+        # Last resort: parse the human-readable tool message
+        match = re.search(r"created memory\s+([a-fA-F0-9-]+)", str(result))
         if match:
             return match.group(1)
+
         return None
 
     def _normalize_results(self, raw: Any, limit: int) -> list[dict[str, Any]]:

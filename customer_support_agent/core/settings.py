@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 from functools import lru_cache
 from pathlib import Path
+from typing import ClassVar
 
 from pydantic import SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -49,6 +50,10 @@ ENV_FILE = _resolve_env_file(WORKSPACE_DIR)
 
 
 class Settings(BaseSettings):
+
+    GOOGLE_EMBEDDING_MODEL_DIMS: ClassVar[dict[str, int]] = {
+        "gemini-embedding-001": 3072,
+    }
 
     model_config = SettingsConfigDict(
         env_file=ENV_FILE,
@@ -148,10 +153,9 @@ class Settings(BaseSettings):
 
     @property
     def effective_google_embedding_dims(self) -> int:
-        _MODEL_DIMS: dict[str, int] = {
-            "gemini-embedding-001": 3072,
-        }
-        return _MODEL_DIMS.get(self.effective_google_embedding_model, self.google_embedding_dims)
+        return self.GOOGLE_EMBEDDING_MODEL_DIMS.get(
+            self.effective_google_embedding_model, self.google_embedding_dims
+        )
 
     @staticmethod
     def _reveal_secret(secret: SecretStr | None) -> str:
