@@ -167,6 +167,7 @@ class CustomerMemoryStore:
         config = self._tool_config(user_id=user_id)
 
         key: str | None = None
+        tool_raised = False
 
         try:
             logger.info(
@@ -194,15 +195,15 @@ class CustomerMemoryStore:
                     str(result)[:200],
                 )
         except Exception:
+            tool_raised = True
             logger.exception(
                 "memory.create.error system=langmem_tool user=%s; using fallback_store",
                 self._namespace_label(user_id),
             )
-            key = None
 
-        # Fallback: persist directly when the LangMem tool fails. Key is content-derived
-        # so repeated retries for the same text are idempotent (no duplicate entries).
-        if not key:
+        # Fallback: only when the tool raised — not when it succeeded with an unparseable
+        # response (which would create a duplicate alongside the LangMem-managed entry).
+        if tool_raised:
             key = "fb-" + hashlib.sha256(
                 f"{self._namespace_label(user_id)}:{clean_text}".encode()
             ).hexdigest()[:16]
@@ -257,7 +258,8 @@ class CustomerMemoryStore:
         namespace = self._namespace_for_user(user_id)
 
         if query and query.strip():
-            results = self._store.search(namespace, query=query.strip(), limit=safe_limit)
+            raw = self._store.search(namespace, query=query.strip(), limit=safe_limit)
+            results = self._extract_list(raw)
             if results:
                 logger.info(
                     "memory.search.path system=langmem_store.semantic user=%s returned=%s",
@@ -271,13 +273,21 @@ class CustomerMemoryStore:
             )
 
         # Fallback: return latest memories even if query misses.
-        fallback = self._store.search(namespace, query=None, limit=safe_limit)
+        fallback = self._extract_list(self._store.search(namespace, query=None, limit=safe_limit))
         logger.info(
             "memory.search.path system=fallback_store.list_recent user=%s returned=%s",
             self._namespace_label(user_id),
             len(fallback),
         )
         return fallback
+
+    @staticmethod
+    def _extract_list(raw: Any) -> list[Any]:
+        if isinstance(raw, dict):
+            return list(raw.get("results") or [])
+        if isinstance(raw, list):
+            return raw
+        return []
 
     @staticmethod
     def _tool_config(user_id: str) -> dict[str, Any]:
