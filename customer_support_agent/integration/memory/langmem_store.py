@@ -23,9 +23,7 @@ class CustomerMemoryStore:
             store=self._store,
             actions_permitted=("create",),
         )
-        logger.info(
-            "Memory backend initialized: provider=langmem mode=hot_path store=inmemory fallback=fallback_store"
-        )
+        logger.info("memory.initialized provider=langmem store=inmemory")
 
     def _build_store(self) -> InMemoryStore:
         api_key = self._settings.google_api_key_value.strip()
@@ -269,20 +267,20 @@ class CustomerMemoryStore:
             results = self._extract_list(raw)
             if results:
                 logger.info(
-                    "memory.search.path system=langmem_store.semantic user=%s returned=%s",
+                    "memory.search.path mode=semantic user=%s returned=%s",
                     self._namespace_label(user_id),
                     len(results),
                 )
                 return results
             logger.info(
-                "memory.search.path system=langmem_store.semantic user=%s returned=0; fallback=list_recent",
+                "memory.search.path mode=semantic user=%s returned=0; falling_back=list_recent",
                 self._namespace_label(user_id),
             )
 
         # Fallback: return latest memories even if query misses.
         fallback = self._extract_list(self._store.search(namespace, query=None, limit=safe_limit))
         logger.info(
-            "memory.search.path system=fallback_store.list_recent user=%s returned=%s",
+            "memory.search.path mode=list_recent user=%s returned=%s",
             self._namespace_label(user_id),
             len(fallback),
         )
