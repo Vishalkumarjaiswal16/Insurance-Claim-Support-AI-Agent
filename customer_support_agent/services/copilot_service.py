@@ -307,17 +307,6 @@ class SupportCopilot:
             "Use tools when the ticket likely needs billing, plan, or account-level checks."
         )
 
-    @staticmethod
-    def _thread_id_for_ticket(ticket: dict[str, Any], customer: dict[str, Any]) -> str:
-        ticket_id = ticket.get("id")
-        if ticket_id is not None:
-            return f"ticket::{ticket_id}"
-
-        customer_email = str(customer.get("email") or "").strip().lower()
-        if customer_email:
-            return f"ticket::{customer_email}"
-        return "ticket::unknown"
-
     def _extract_agent_draft_and_tool_calls(
         self, agent_result: Any
     ) -> tuple[str, list[dict[str, Any]]]:

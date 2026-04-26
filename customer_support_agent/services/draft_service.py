@@ -86,15 +86,19 @@ class DraftService:
             )
         except Exception:
             logger.exception("Background draft generation failed for ticket_id=%s", ticket_id)
-            return drafts_repo.create(
-                ticket_id=ticket_id,
-                content=(
-                    "Automatic draft generation failed. Configure AI keys and trigger "
-                    "manual draft generation."
-                ),
-                context_used=json.dumps(self._failed_context("Draft generation failed")),
-                status="pending",
-            )
+            try:
+                return drafts_repo.create(
+                    ticket_id=ticket_id,
+                    content=(
+                        "Automatic draft generation failed. Configure AI keys and trigger "
+                        "manual draft generation."
+                    ),
+                    context_used=json.dumps(self._failed_context("Draft generation failed")),
+                    status="pending",
+                )
+            except Exception:
+                logger.exception("Background fallback draft persist failed for ticket_id=%s", ticket_id)
+                return None
 
     def generate_and_store_manual(
         self,
