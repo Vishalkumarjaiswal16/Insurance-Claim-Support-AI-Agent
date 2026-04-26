@@ -17,6 +17,7 @@ dependencies = [
     "langgraph>=1.1.8",
     "langmem>=0.0.30",
     "pydantic-settings>=2.10.1",
+    "streamlit>=1.56.0",
 ]
 
 [tool.pytest.ini_options]
