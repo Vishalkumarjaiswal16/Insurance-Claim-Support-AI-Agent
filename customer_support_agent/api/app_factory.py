@@ -26,6 +26,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         yield
 
     app = FastAPI(title=resolved_settings.app_name, lifespan=lifespan)
+    app.dependency_overrides[get_settings] = lambda: resolved_settings
 
     app.include_router(health_router)
     app.include_router(tickets_router)
