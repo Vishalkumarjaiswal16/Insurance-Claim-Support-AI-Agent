@@ -44,7 +44,14 @@ class SupportCopilot:
             self.memory = CustomerMemoryStore(settings=settings)
         except Exception as exc:
             self._memory_error = str(exc)
-        self.rag = KnowledgeBaseService(settings=settings)
+
+        self.rag: KnowledgeBaseService | None = None
+        self._rag_error: str | None = None
+
+        try:
+            self.rag = KnowledgeBaseService(settings=settings)
+        except Exception as exc:
+            self._rag_error = str(exc)
 
     
     def generate_draft(self, ticket: dict[str, Any], customer: dict[str, Any]) -> dict[str, Any]:
@@ -57,7 +64,7 @@ class SupportCopilot:
             customer_company=customer.get("company"),
             limit=self._settings.mem0_top_k,
         )
-        kb_hits = self.rag.search(query=query, top_k=self._settings.rag_top_k)
+        kb_hits = self.rag.search(query=query, top_k=self._settings.rag_top_k) if self.rag else []
 
         system_prompt = self._build_system_prompt(memory_hits=memory_hits, kb_hits=kb_hits)
         user_prompt = self._build_user_prompt(ticket=ticket, customer=customer)
@@ -100,6 +107,8 @@ class SupportCopilot:
         )
         if self._memory_error:
             context_used.setdefault("errors", []).append(f"Memory disabled: {self._memory_error}")
+        if self._rag_error:
+            context_used.setdefault("errors", []).append(f"RAG disabled: {self._rag_error}")
         if used_fallback:
             context_used.setdefault("errors", []).append(
                 "Primary tool-call response had empty content; fallback synthesis was used."
@@ -191,7 +200,7 @@ class SupportCopilot:
         for scope_user_id in scope_user_ids:
             hits = self.memory.search(query=query, user_id=scope_user_id, limit=per_scope_limit)
             raw_hits.extend(self._annotate_memory_scope(hits=hits, scope_user_id=scope_user_id))
-        return self._dedupe_memory_hits(raw_hits, limit=per_scope_limit * len(scope_user_ids))
+        return self._dedupe_memory_hits(raw_hits, limit=max(1, limit))
     
     def _memory_scope_ids(self, customer_email: str, customer_company: str | None) -> list[str]:
         scope_user_ids = [customer_email.strip().lower()]

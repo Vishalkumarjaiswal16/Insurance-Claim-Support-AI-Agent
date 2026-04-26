@@ -84,7 +84,7 @@ class DraftService:
                 context_used=json.dumps(context_used),
                 status="pending",
             )
-        except Exception as exc:
+        except Exception:
             logger.exception("Background draft generation failed for ticket_id=%s", ticket_id)
             return drafts_repo.create(
                 ticket_id=ticket_id,
@@ -92,7 +92,7 @@ class DraftService:
                     "Automatic draft generation failed. Configure AI keys and trigger "
                     "manual draft generation."
                 ),
-                context_used=json.dumps(self._failed_context(str(exc))),
+                context_used=json.dumps(self._failed_context("Draft generation failed")),
                 status="pending",
             )
 
