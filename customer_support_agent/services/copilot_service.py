@@ -37,6 +37,7 @@ class SupportCopilot:
             checkpointer=InMemorySaver(),
         )
 
+        self.memory: CustomerMemoryStore | None = None
         self._memory_error: str | None = None
 
         try:
@@ -125,6 +126,8 @@ class SupportCopilot:
             draft_content=draft_content,
             context_used=context_used or {},
         )
+        if not self.memory:
+            return
         for scope_user_id in self._memory_scope_ids(
             customer_email=customer_email,
             customer_company=customer_company,
@@ -143,6 +146,8 @@ class SupportCopilot:
         customer_company: str | None = None,
         limit: int = 20,
     ) -> list[dict[str, Any]]:
+        if not self.memory:
+            return []
         scope_user_ids = self._memory_scope_ids(
             customer_email=customer_email,
             customer_company=customer_company,
@@ -180,6 +185,8 @@ class SupportCopilot:
             customer_email=customer_email,
             customer_company=customer_company,
         )
+        if not self.memory:
+            return []
         raw_hits: list[dict[str, Any]] = []
         for scope_user_id in scope_user_ids:
             hits = self.memory.search(query=query, user_id=scope_user_id, limit=per_scope_limit)

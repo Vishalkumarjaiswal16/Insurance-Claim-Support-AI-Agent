@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from functools import lru_cache
 
 from fastapi import Depends, HTTPException
@@ -12,6 +13,8 @@ from customer_support_agent.services.copilot_service import SupportCopilot
 from customer_support_agent.services.draft_service import DraftService
 from customer_support_agent.services.knowledge_service import KnowledgeService
 
+logger = logging.getLogger(__name__)
+
 
 @lru_cache
 def get_copilot() -> SupportCopilot:
@@ -21,8 +24,9 @@ def get_copilot() -> SupportCopilot:
 def get_copilot_or_503() -> SupportCopilot:
     try:
         return get_copilot()
-    except Exception as exc:
-        raise HTTPException(status_code=503, detail=f"Copilot unavailable: {exc}") from exc
+    except Exception:
+        logger.exception("copilot.init.error")
+        raise HTTPException(status_code=503, detail="AI copilot is currently unavailable")
 
 
 def get_settings_dep() -> Settings:

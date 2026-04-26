@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import logging
+
 from fastapi import APIRouter, Depends, HTTPException
 
 from customer_support_agent.api.dependencies import (
@@ -13,6 +15,8 @@ from customer_support_agent.repositories.sqlite.tickets import TicketsRepository
 from customer_support_agent.schemas.api import DraftResponse, DraftUpdateRequest
 from customer_support_agent.services.draft_service import DraftService
 
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -59,7 +63,6 @@ def update_draft_route(
                     context_used=context_used,
                 )
             except Exception:
-                # Draft acceptance should still succeed even if memory save fails.
-                pass
+                logger.exception("memory.save_resolution.error draft_id=%s", draft_id)
 
     return draft_service.serialize_draft(updated)

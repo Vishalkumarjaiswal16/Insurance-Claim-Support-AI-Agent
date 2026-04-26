@@ -1,11 +1,14 @@
 from __future__ import annotations
 
+import logging
+
 from fastapi import APIRouter, Depends, HTTPException
 
 from customer_support_agent.api.dependencies import get_knowledge_service
 from customer_support_agent.schemas.api import KnowledgeIngestRequest, KnowledgeIngestResponse
 from customer_support_agent.services.knowledge_service import KnowledgeService
 
+logger = logging.getLogger(__name__)
 router = APIRouter()
 
 @router.post("/api/knowledge/ingest", response_model=KnowledgeIngestResponse)
@@ -15,5 +18,6 @@ def ingest_knowledge_route(
 ) -> dict[str, int]:
     try:
         return knowledge_service.ingest(clear_existing=payload.clear_existing)
-    except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"Ingestion failed: {exc}") from exc
+    except Exception:
+        logger.exception("knowledge.ingest.error")
+        raise HTTPException(status_code=500, detail="Knowledge ingestion failed")

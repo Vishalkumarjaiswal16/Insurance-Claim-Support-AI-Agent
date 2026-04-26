@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import logging
+
 from fastapi import APIRouter, Depends, HTTPException
 
 from customer_support_agent.api.dependencies import (
@@ -11,6 +13,8 @@ from customer_support_agent.api.dependencies import (
 from customer_support_agent.repositories.sqlite.customer import CustomersRepository
 from customer_support_agent.schemas.api import CustomerMemoriesResponse, CustomerMemorySearchResponse
 from customer_support_agent.services.copilot_service import SupportCopilot
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -30,8 +34,9 @@ def customer_memories_route(
             customer_email=customer["email"],
             customer_company=customer.get("company"),
         )
-    except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"Failed to load memories: {exc}") from exc
+    except Exception:
+        logger.exception("memory.list.error customer_id=%s", customer_id)
+        raise HTTPException(status_code=500, detail="Failed to load memories")
 
     return {
         "customer_id": customer_id,
@@ -60,8 +65,9 @@ def customer_memory_search_route(
             customer_company=customer.get("company"),
             limit=max(1, min(limit, 25)),
         )
-    except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"Failed to search memories: {exc}") from exc
+    except Exception:
+        logger.exception("memory.search.error customer_id=%s", customer_id)
+        raise HTTPException(status_code=500, detail="Failed to search memories")
 
     return {
         "customer_id": customer_id,

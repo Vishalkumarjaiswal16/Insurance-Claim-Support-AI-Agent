@@ -126,8 +126,9 @@ def generate_draft_route(
             drafts_repo=drafts_repo,
             copilot=copilot,
         )
-    except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"Failed to generate draft: {exc}") from exc
+    except Exception:
+        logger.exception("draft.generate.error ticket_id=%s", ticket_id)
+        raise HTTPException(status_code=500, detail="Failed to generate draft")
 
     return {
         "ticket_id": ticket_id,
