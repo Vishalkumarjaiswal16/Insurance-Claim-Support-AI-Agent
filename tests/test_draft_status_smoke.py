@@ -1,11 +1,9 @@
 from __future__ import annotations
 
 from pathlib import Path
-import sys
+from typing import Any
 
 from fastapi.testclient import TestClient
-
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from customer_support_agent.api import dependencies
 from customer_support_agent.api.app_factory import create_app
@@ -15,9 +13,7 @@ from customer_support_agent.repositories.sqlite import base as sqlite_base
 
 
 class _FakeCopilot:
-    def generate_draft(self, ticket: dict, customer: dict) -> dict:
-        _ = ticket
-        _ = customer
+    def generate_draft(self, _ticket: dict[str, Any], _customer: dict[str, Any]) -> dict[str, Any]:
         return {
             "draft": "Preliminary coverage recommendation.",
             "context_used": {
@@ -36,8 +32,8 @@ class _FakeCopilot:
             },
         }
 
-    def save_accepted_resolution(self, **kwargs) -> None:
-        _ = kwargs
+    def save_accepted_resolution(self, **_kwargs: Any) -> None:
+        pass
 
 
 def test_draft_status_lifecycle_smoke(tmp_path: Path, monkeypatch) -> None:
@@ -51,6 +47,7 @@ def test_draft_status_lifecycle_smoke(tmp_path: Path, monkeypatch) -> None:
     )
 
     monkeypatch.setattr(sqlite_base, "get_settings", lambda: settings)
+    monkeypatch.setattr(sqlite_base, "_DB_INITIALIZED", False)
     dependencies.get_copilot.cache_clear()
 
     app = create_app(settings=settings)
