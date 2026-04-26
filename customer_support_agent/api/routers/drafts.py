@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
-@router.get("/api/drafts/{ticket_id}", response_model=DraftResponse)
+@router.get("/api/tickets/{ticket_id}/drafts/latest", response_model=DraftResponse)
 def get_draft_route(
     ticket_id: int,
     drafts_repo: DraftsRepository = Depends(get_drafts_repository),

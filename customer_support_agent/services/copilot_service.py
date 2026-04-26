@@ -6,7 +6,6 @@ from typing import Any
 
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, SystemMessage, ToolMessage
 from langchain_groq import ChatGroq
-from langgraph.checkpoint.memory import InMemorySaver
 from langgraph.prebuilt import create_react_agent
 
 from customer_support_agent.core.settings import Settings
@@ -35,7 +34,6 @@ class SupportCopilot:
         self._agent = create_react_agent(
             model=self._llm,
             tools=self._tools,
-            checkpointer=InMemorySaver(),
         )
 
         self.memory: CustomerMemoryStore | None = None
@@ -77,12 +75,7 @@ class SupportCopilot:
                     HumanMessage(content=user_prompt),
                 ]
             },
-            config={
-                "configurable": {
-                    "thread_id": self._thread_id_for_ticket(ticket=ticket, customer=customer),
-                },
-                "recursion_limit": 40,
-            },
+            config={"recursion_limit": 40},
         )
         draft_text, tool_calls = self._extract_agent_draft_and_tool_calls(agent_result)
         used_fallback = False
