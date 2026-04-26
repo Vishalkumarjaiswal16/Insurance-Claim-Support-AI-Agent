@@ -62,13 +62,6 @@ def create_ticket_route(
         priority=payload.priority,
     )
 
-    merged = {
-        **ticket,
-        "customer_email": customer["email"],
-        "customer_name": customer.get("name"),
-        "customer_company": customer.get("company"),
-    }
-
     if payload.auto_generate:
         background_tasks.add_task(
             _generate_and_store_draft_background,
@@ -79,7 +72,7 @@ def create_ticket_route(
             draft_service,
         )
 
-    return draft_service.serialize_ticket(merged)
+    return draft_service.serialize_ticket(ticket)
 
 
 @router.get("/api/tickets", response_model=list[TicketResponse])

@@ -40,6 +40,9 @@ def update_draft_route(
     tickets_repo: TicketsRepository = Depends(get_tickets_repository),
     draft_service: DraftService = Depends(get_draft_service),
 ) -> dict:
+    if payload.content is None and payload.status is None:
+        raise HTTPException(status_code=422, detail="At least one of 'content' or 'status' must be provided")
+
     existing = drafts_repo.get_by_id(draft_id)
     if not existing:
         raise HTTPException(status_code=404, detail="Draft not found")

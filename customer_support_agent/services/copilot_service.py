@@ -20,14 +20,15 @@ from customer_support_agent.integration.tools.support_tools import get_support_t
 
 class SupportCopilot:
     def __init__(self, settings: Settings):
-        if not settings.groq_api_key:
+        groq_api_key = settings.groq_api_key_value.strip()
+        if not groq_api_key:
             raise RuntimeError(
                 "GROQ_API_KEY is missing. Add it in .env before generating drafts."
             )
         self._settings = settings
         self._llm = ChatGroq(
             model=settings.groq_model,
-            groq_api_key=settings.groq_api_key,
+            groq_api_key=groq_api_key,
             temperature=settings.llm_temperature,
         )
         self._tools = get_support_tools()
