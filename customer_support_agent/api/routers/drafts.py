@@ -44,6 +44,9 @@ def update_draft_route(
     if payload.content is None and payload.status is None:
         raise HTTPException(status_code=422, detail="At least one of 'content' or 'status' must be provided")
 
+    if payload.status == "accepted" and payload.content is not None and not payload.content.strip():
+        raise HTTPException(status_code=422, detail="Accepted draft content cannot be empty")
+
     existing = drafts_repo.get_by_id(draft_id)
     if not existing:
         raise HTTPException(status_code=404, detail="Draft not found")
