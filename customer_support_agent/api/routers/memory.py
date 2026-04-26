@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
 
@@ -24,7 +25,7 @@ def customer_memories_route(
     customer_id: int,
     customers_repo: CustomersRepository = Depends(get_customers_repository),
     copilot: SupportCopilot = Depends(get_copilot_or_503),
-) -> dict:
+) -> dict[str, Any]:
     customer = customers_repo.get_by_id(customer_id)
     if not customer:
         raise HTTPException(status_code=404, detail="Customer not found")
@@ -51,7 +52,7 @@ def customer_memory_search_route(
     limit: int = 10,
     customers_repo: CustomersRepository = Depends(get_customers_repository),
     copilot: SupportCopilot = Depends(get_copilot_or_503),
-) -> dict:
+) -> dict[str, Any]:
     customer = customers_repo.get_by_id(customer_id)
     if not customer:
         raise HTTPException(status_code=404, detail="Customer not found")

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
 
@@ -25,7 +26,7 @@ def get_draft_route(
     ticket_id: int,
     drafts_repo: DraftsRepository = Depends(get_drafts_repository),
     draft_service: DraftService = Depends(get_draft_service),
-) -> dict:
+) -> dict[str, Any]:
     draft = drafts_repo.get_latest_for_ticket(ticket_id)
     if not draft:
         raise HTTPException(status_code=404, detail="Draft not found")
@@ -39,7 +40,7 @@ def update_draft_route(
     drafts_repo: DraftsRepository = Depends(get_drafts_repository),
     tickets_repo: TicketsRepository = Depends(get_tickets_repository),
     draft_service: DraftService = Depends(get_draft_service),
-) -> dict:
+) -> dict[str, Any]:
     if payload.content is None and payload.status is None:
         raise HTTPException(status_code=422, detail="At least one of 'content' or 'status' must be provided")
 
