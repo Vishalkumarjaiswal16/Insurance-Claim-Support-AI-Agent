@@ -17,6 +17,7 @@ def test_health_endpoint_returns_ok(tmp_path: Path, monkeypatch) -> None:
         chroma_rag_dir=Path("data/chroma_rag"),
         chroma_mem0_dir=Path("data/chroma_mem0"),
         knowledge_base_dir=Path("knowledge_base"),
+        _env_file=None,
     )
 
     monkeypatch.setattr(sqlite_base, "get_settings", lambda: settings)

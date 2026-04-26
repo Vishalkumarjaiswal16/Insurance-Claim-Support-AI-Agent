@@ -5,7 +5,7 @@ from customer_support_agent.integration.memory.langmem_store import CustomerMemo
 
 
 def test_langmem_add_resolution_and_search_returns_hit() -> None:
-    store = CustomerMemoryStore(settings=Settings(google_api_key=None))
+    store = CustomerMemoryStore(settings=Settings(google_api_key=None, _env_file=None))
 
     store.add_resolution(
         user_id="adjuster@example.com",
@@ -23,7 +23,7 @@ def test_langmem_add_resolution_and_search_returns_hit() -> None:
 
 
 def test_langmem_list_memories_respects_limit() -> None:
-    store = CustomerMemoryStore(settings=Settings(google_api_key=None))
+    store = CustomerMemoryStore(settings=Settings(google_api_key=None, _env_file=None))
 
     store.add_interaction(
         user_id="adjuster@example.com",
@@ -46,7 +46,7 @@ def test_langmem_list_memories_respects_limit() -> None:
 
 
 def test_langmem_search_fallback_returns_existing_memories_for_nonmatching_query() -> None:
-    store = CustomerMemoryStore(settings=Settings(google_api_key=None))
+    store = CustomerMemoryStore(settings=Settings(google_api_key=None, _env_file=None))
 
     store.add_resolution(
         user_id="adjuster@example.com",
