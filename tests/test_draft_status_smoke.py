@@ -13,7 +13,7 @@ from customer_support_agent.repositories.sqlite import base as sqlite_base
 
 
 class _FakeCopilot:
-    def generate_draft(self, _ticket: dict[str, Any], _customer: dict[str, Any]) -> dict[str, Any]:
+    def generate_draft(self, ticket: dict[str, Any], customer: dict[str, Any]) -> dict[str, Any]:  # noqa: ARG002
         return {
             "draft": "Preliminary coverage recommendation.",
             "context_used": {
