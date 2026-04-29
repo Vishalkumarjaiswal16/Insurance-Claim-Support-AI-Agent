@@ -1,15 +1,15 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any, Literal
+from typing import Any, Literal, Optional
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 
 class TicketCreateRequest(BaseModel):
     customer_email: EmailStr
-    customer_name: str | None = None
-    customer_company: str | None = None
+    customer_name: Optional[str] = None
+    customer_company: Optional[str] = None
     subject: str = Field(min_length=3)
     description: str = Field(min_length=10)
     priority: Literal["low", "medium", "high", "urgent"] = "medium"
@@ -20,8 +20,8 @@ class TicketResponse(BaseModel):
     id: int
     customer_id: int
     customer_email: EmailStr
-    customer_name: str | None = None
-    customer_company: str | None = None
+    customer_name: Optional[str] = None
+    customer_company: Optional[str] = None
     subject: str
     description: str
     status: str
@@ -48,11 +48,11 @@ class DraftToolCall(BaseModel):
     model_config = ConfigDict(extra="allow")
 
     tool_name: str
-    tool_call_id: str | None = None
+    tool_call_id: Optional[str] = None
     arguments: dict[str, Any] = Field(default_factory=dict)
     status: str
-    summary: str | None = None
-    output: dict[str, Any] | None = None
+    summary: Optional[str] = None
+    output: Optional[dict[str, Any]] = None
     output_text: str
 
 
@@ -60,10 +60,10 @@ class StructuredDraftContext(BaseModel):
     model_config = ConfigDict(extra="allow")
 
     version: int = 2
-    ticket: dict[str, Any] | None = None
-    customer: dict[str, Any] | None = None
-    signals: DraftSignals | None = None
-    highlights: DraftHighlights | None = None
+    ticket: Optional[dict[str, Any]] = None
+    customer: Optional[dict[str, Any]] = None
+    signals: Optional[DraftSignals] = None
+    highlights: Optional[DraftHighlights] = None
     memory_hits: list[dict[str, Any]] = Field(default_factory=list)
     knowledge_hits: list[dict[str, Any]] = Field(default_factory=list)
     tool_calls: list[DraftToolCall] = Field(default_factory=list)
@@ -74,14 +74,14 @@ class DraftResponse(BaseModel):
     id: int
     ticket_id: int
     content: str
-    context_used: StructuredDraftContext | None = None
+    context_used: Optional[StructuredDraftContext] = None
     status: Literal["pending", "accepted", "discarded"]
     created_at: datetime
 
 
 class DraftUpdateRequest(BaseModel):
-    content: str | None = None
-    status: Literal["pending", "accepted", "discarded"] | None = None
+    content: Optional[str] = None
+    status: Optional[Literal["pending", "accepted", "discarded"]] = None
 
 
 class GenerateDraftResponse(BaseModel):

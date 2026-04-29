@@ -3,13 +3,13 @@ from __future__ import annotations
 import os
 from functools import lru_cache
 from pathlib import Path
-from typing import ClassVar
+from typing import ClassVar, Optional
 
 from pydantic import SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
-def _find_project_root(start: Path) -> Path | None:
+def _find_project_root(start: Path) -> Optional[Path]:
     for candidate in (start, *start.parents):
         if (candidate / "pyproject.toml").is_file():
             return candidate
@@ -63,13 +63,13 @@ class Settings(BaseSettings):
 
     app_name: str = "AI Copilot for Support Agents"
 
-    groq_api_key: SecretStr | None = None
+    groq_api_key: Optional[SecretStr] = None
     groq_model: str = "llama-3.1-8b-instant"
     llm_temperature: float = 0.2
 
 
-    openai_api_key: SecretStr | None = None
-    google_api_key: SecretStr | None = None
+    openai_api_key: Optional[SecretStr] = None
+    google_api_key: Optional[SecretStr] = None
     google_embedding_model: str = "gemini-embedding-001"
     google_embedding_dims: int = 3072  # fallback for unknown models
     enable_local_embeddings: bool = False
@@ -158,7 +158,7 @@ class Settings(BaseSettings):
         )
 
     @staticmethod
-    def _reveal_secret(secret: SecretStr | None) -> str:
+    def _reveal_secret(secret: Optional[SecretStr]) -> str:
         return secret.get_secret_value() if secret else ""
 
     @property
@@ -178,7 +178,7 @@ def get_settings() -> Settings:
     return Settings()
 
 
-def ensure_directories(settings: Settings | None = None) -> None:
+def ensure_directories(settings: Optional[Settings] = None) -> None:
     """Create the local directories required by SQLite and ChromaDB."""
     config = settings or get_settings()
 
