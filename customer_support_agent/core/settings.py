@@ -9,7 +9,7 @@ from pydantic import SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
-def _find_project_root(start: Path) -> Path | None:
+def _find_project_root(start: Path) -> Optional[Path]:
     for candidate in (start, *start.parents):
         if (candidate / "pyproject.toml").is_file():
             return candidate
@@ -158,7 +158,7 @@ class Settings(BaseSettings):
         )
 
     @staticmethod
-    def _reveal_secret(secret: SecretStr | None) -> str:
+    def _reveal_secret(secret: Optional[SecretStr]) -> str:
         return secret.get_secret_value() if secret else ""
 
     @property
@@ -178,7 +178,7 @@ def get_settings() -> Settings:
     return Settings()
 
 
-def ensure_directories(settings: Settings | None = None) -> None:
+def ensure_directories(settings: Optional[Settings] = None) -> None:
     """Create the local directories required by SQLite and ChromaDB."""
     config = settings or get_settings()
 
