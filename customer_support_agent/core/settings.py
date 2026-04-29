@@ -3,7 +3,7 @@ from __future__ import annotations
 import os
 from functools import lru_cache
 from pathlib import Path
-from typing import ClassVar
+from typing import ClassVar, Optional
 
 from pydantic import SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -63,13 +63,13 @@ class Settings(BaseSettings):
 
     app_name: str = "AI Copilot for Support Agents"
 
-    groq_api_key: SecretStr | None = None
+    groq_api_key: Optional[SecretStr] = None
     groq_model: str = "llama-3.1-8b-instant"
     llm_temperature: float = 0.2
 
 
-    openai_api_key: SecretStr | None = None
-    google_api_key: SecretStr | None = None
+    openai_api_key: Optional[SecretStr] = None
+    google_api_key: Optional[SecretStr] = None
     google_embedding_model: str = "gemini-embedding-001"
     google_embedding_dims: int = 3072  # fallback for unknown models
     enable_local_embeddings: bool = False

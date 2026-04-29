@@ -850,8 +850,12 @@ dependencies = [
     { name = "langgraph" },
     { name = "langmem" },
     { name = "pydantic-settings" },
-    { name = "streamlit" },
     { name = "uvicorn" },
+]
+
+[package.optional-dependencies]
+dashboard = [
+    { name = "streamlit" },
 ]
 
 [package.metadata]
@@ -867,9 +871,10 @@ requires-dist = [
     { name = "langgraph", specifier = ">=1.1.8" },
     { name = "langmem", specifier = ">=0.0.30" },
     { name = "pydantic-settings", specifier = ">=2.10.1" },
-    { name = "streamlit", specifier = ">=1.56.0" },
+    { name = "streamlit", marker = "extra == 'dashboard'", specifier = ">=1.56.0" },
     { name = "uvicorn", specifier = ">=0.30.0" },
 ]
+provides-extras = ["dashboard"]
 
 [[package]]
 name = "jinja2"
