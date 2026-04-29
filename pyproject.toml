@@ -17,6 +17,10 @@ dependencies = [
     "langgraph>=1.1.8",
     "langmem>=0.0.30",
     "pydantic-settings>=2.10.1",
+]
+
+[project.optional-dependencies]
+dashboard = [
     "streamlit>=1.56.0",
 ]
 

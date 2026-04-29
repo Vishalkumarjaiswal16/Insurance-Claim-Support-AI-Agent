@@ -9,8 +9,23 @@ from typing import Any
 import requests
 import streamlit as st
 
-API_BASE_URL = os.getenv("API_BASE_URL", "http://localhost:8000")
+def _resolve_api_base_url() -> str:
+    explicit_api_base_url = os.getenv("API_BASE_URL")
+    if explicit_api_base_url:
+        return explicit_api_base_url
 
+    try:
+        from customer_support_agent.core.settings import get_settings
+    except ImportError:
+        return "http://localhost:8000"
+
+    try:
+        return get_settings().dashboard_api_url
+    except Exception:
+        return "http://localhost:8000"
+
+
+API_BASE_URL = _resolve_api_base_url()
 
 st.set_page_config(page_title="Insurance Claims Copilot", layout="wide")
 st.title("Insurance Claims Copilot Workbench")
