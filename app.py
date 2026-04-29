@@ -9,6 +9,7 @@ from typing import Any
 import requests
 import streamlit as st
 
+
 def _resolve_api_base_url() -> str:
     explicit_api_base_url = os.getenv("API_BASE_URL")
     if explicit_api_base_url:
@@ -333,7 +334,7 @@ else:
     selected_label = st.selectbox("Select claim", labels)
     selected_ticket = tickets[labels.index(selected_label)]
 
-    c1, c2 = st.columns([1, 1])
+    c1, c2 = st.columns(2)
     with c1:
         st.markdown("**Claimant**")
         st.write(selected_ticket["customer_email"])
@@ -354,7 +355,13 @@ else:
         except Exception as exc:
             st.error(f"Recommendation generation failed: {exc}")
 
-    draft_data = st.session_state.get(f"draft_{selected_ticket['id']}") or fetch_draft(selected_ticket["id"])
+    draft_data = st.session_state.get(f"draft_{selected_ticket['id']}")
+    if draft_data is None:
+        try:
+            draft_data = fetch_draft(selected_ticket["id"])
+        except Exception as exc:
+            st.error(f"Could not load draft: {exc}")
+            draft_data = None
 
     if draft_data:
         st.markdown("**Coverage Recommendation**")

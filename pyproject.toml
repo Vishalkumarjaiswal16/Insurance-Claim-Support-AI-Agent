@@ -19,6 +19,9 @@ dependencies = [
     "pydantic-settings>=2.10.1",
 ]
 
+# Streamlit dashboard is optional. To use it, install with:
+#   pip install .[dashboard]
+# or: uv sync --extra dashboard
 [project.optional-dependencies]
 dashboard = [
     "streamlit>=1.56.0",
