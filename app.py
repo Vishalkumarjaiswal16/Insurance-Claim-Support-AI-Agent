@@ -378,13 +378,13 @@ else:
                     st.error(f"Failed to approve recommendation: {exc}")
 
         with c4:
-            if st.button("Request Info", use_container_width=True):
+            if st.button("Discard Recommendation", use_container_width=True):
                 try:
                     updated = update_draft(draft_data["id"], edited_content, "discarded")
                     st.session_state[f"draft_{selected_ticket['id']}"] = updated
-                    st.info("Recommendation marked as request for more information")
+                    st.info("Recommendation discarded")
                 except Exception as exc:
-                    st.error(f"Failed to mark request for info: {exc}")
+                    st.error(f"Failed to discard recommendation: {exc}")
 
         with st.expander("Context used for recommendation"):
             render_context(draft_data.get("context_used"))
