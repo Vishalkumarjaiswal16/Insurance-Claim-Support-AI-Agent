@@ -10,5 +10,5 @@ __pycache__/
 *.py[cod]
 *.pyo
 
-# Local Chroma vector store
-chroma_rag/
+# Runtime-generated data (vector stores, local DBs, etc.)
+data/
