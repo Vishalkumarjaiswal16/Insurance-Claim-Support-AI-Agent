@@ -33,8 +33,10 @@ class KnowledgeBaseService:
         if api_key_str:
             # chromadb's GoogleGenaiEmbeddingFunction may read GEMINI_API_KEY or
             # GOOGLE_API_KEY depending on version — set both for compatibility.
-            os.environ.setdefault("GOOGLE_API_KEY", api_key_str)
-            os.environ.setdefault("GEMINI_API_KEY", api_key_str)
+            if not os.environ.get("GOOGLE_API_KEY"):
+                os.environ["GOOGLE_API_KEY"] = api_key_str
+            if not os.environ.get("GEMINI_API_KEY"):
+                os.environ["GEMINI_API_KEY"] = api_key_str
             try:
                 return embedding_functions.GoogleGenaiEmbeddingFunction(
                     model_name=self._settings.effective_google_embedding_model,
