@@ -1,385 +1,314 @@
 # Insurance Claim Support AI Agent
 
-An AI-powered copilot for insurance customer support teams. It assists human adjusters by automatically generating coverage recommendation drafts grounded in policy documents, customer history, and real-time operational context — keeping the adjuster in full control of every final decision.
+An AI-assisted claims operations workspace for insurance support teams and adjusters. The project combines a FastAPI backend, a Streamlit workbench, SQLite persistence, Chroma-based retrieval, and LangGraph-powered draft generation to help teams produce grounded claim responses faster while keeping the final decision with a human reviewer.
 
----
+## Overview
 
-## What It Does
+This project is designed for first notice of loss (FNOL) and claim-support workflows. It helps an adjuster or support operator:
 
-When a customer submits an insurance claim, the copilot:
+- register a new claim
+- look up customer and claim history
+- retrieve relevant policy and process guidance from a knowledge base
+- generate a draft recommendation with traceable context
+- approve or discard the draft inside a review flow
+- store approved outcomes back into memory for future assistance
 
-1. **Looks up the customer** — retrieves their profile, open ticket count, and service plan tier
-2. **Searches the knowledge base** — finds relevant policy rules, FAQs, and claim procedures via RAG
-3. **Recalls past interactions** — uses long-term memory (LangMem) to surface context from previous conversations
-4. **Drafts a reply** — generates a structured recommendation the human adjuster can review, edit, and approve
+The system is intentionally human-in-the-loop. AI generates recommendations, but a licensed adjuster or support professional remains responsible for the final decision.
 
-On approval, the accepted resolution is stored back into memory so the agent learns from every resolved claim.
+## Key Capabilities
 
----
+- FastAPI service with routes for tickets, drafts, knowledge ingestion, memory lookup, and health checks
+- Streamlit workbench for claim registration, draft review, and claim-history probing
+- SQLite repositories for customers, tickets, and drafts
+- ChromaDB-backed retrieval over local markdown and text knowledge documents
+- LangMem-based customer and company memory with graceful fallback behavior
+- Groq-powered draft generation using LangGraph and tool calling
+- Draft context capture, including knowledge hits, memory hits, and tool execution summaries
 
 ## Architecture
 
-```mermaid
-flowchart TD
-    A["Streamlit Dashboard (app.py)"] --> B["FastAPI App (main.py + app_factory.py)"]
-    B --> C["Routers (tickets, drafts, knowledge, memory, health)"]
-    C --> D["DraftService"]
-    C --> E["KnowledgeService"]
-    C --> F["SQLite Repositories"]
-    D --> G["SupportCopilot"]
-    G --> H["Memory Integration (LangMem adapter)"]
-    G --> I["RAG Integration (ChromaDB knowledge retrieval)"]
-    G --> J["Tool Calling (plan lookup + ticket-load lookup)"]
-    G --> K["Groq LLM via LangChain create_agent"]
-    E --> I
-    F --> L["SQLite DB (data/support.db)"]
-    I --> M["Chroma RAG Store (data/chroma_rag)"]
-    H --> N["Memory Store (LangGraph InMemoryStore)"]
+```text
+Streamlit UI (app.py)
+        |
+        v
+FastAPI application (main.py -> app_factory.py)
+        |
+        +-- Tickets router
+        +-- Drafts router
+        +-- Knowledge router
+        +-- Memory router
+        +-- Health router
+        |
+        v
+Service layer
+        +-- DraftService
+        +-- KnowledgeService
+        +-- SupportCopilot
+                +-- Groq chat model
+                +-- LangGraph agent
+                +-- Support tools
+                +-- CustomerMemoryStore
+                +-- KnowledgeBaseService
+        |
+        v
+Persistence layer
+        +-- SQLite (tickets, customers, drafts)
+        +-- Chroma RAG store
+        +-- LangMem / InMemoryStore-backed memory
 ```
-
-### Runtime Request Flow
-
-1. Adjuster creates or selects a claim (FNOL) in the Streamlit UI
-2. UI calls FastAPI routes
-3. Claim and customer data is read/written through SQLite repositories
-4. Recommendation generation route calls `SupportCopilot`
-5. `SupportCopilot` retrieves:
-   - Customer/company memories (LangMem)
-   - Relevant KB chunks (ChromaDB RAG)
-   - Tool outputs (plan tier + open-ticket load)
-6. Agent runtime (`create_agent`) generates a recommendation draft + structured context metadata
-7. Draft is persisted to the `drafts` table
-8. On adjuster approval, ticket status → `resolved` and the resolution is saved to memory
-
----
 
 ## Tech Stack
 
-| Layer | Technology |
-|-------|-----------|
+| Area | Technology |
+| --- | --- |
 | Language | Python 3.12 |
-| LLM | Groq — `qwen/qwen3-32b` |
-| Agent Framework | LangGraph + LangChain |
-| Long-term Memory | LangMem + LangGraph `InMemoryStore` |
-| Vector Store (RAG) | ChromaDB (persistent) |
-| Embeddings | Google Gemini `gemini-embedding-001` |
-| Text Splitting | `langchain-text-splitters` |
+| API | FastAPI, Uvicorn |
+| UI | Streamlit |
+| Agent runtime | LangGraph, LangChain |
+| LLM | Groq |
+| Retrieval | ChromaDB |
+| Embeddings | Google Gemini embeddings |
+| Memory | LangMem with LangGraph `InMemoryStore` |
 | Database | SQLite |
-| Schema Validation | Pydantic v2 + pydantic-settings |
-| API | FastAPI + Uvicorn *(planned)* |
-| Dashboard | Streamlit *(planned)* |
-| Package Manager | `uv` |
-| Containerization | Docker + Docker Compose *(planned)* |
-| CI/CD | GitHub Actions → AWS EC2 *(planned)* |
+| Settings | `pydantic-settings` |
+| Package manager | `uv` |
+| Testing | `pytest` |
 
----
+## Repository Layout
 
-## Project Structure
-
-```
-Insurance-Claim-Support-AI-Agent/
-├── main.py                              # FastAPI app bootstrap (planned)
-├── app.py                               # Streamlit dashboard (planned)
-├── pyproject.toml                       # uv project config + dependencies
-├── .env                                 # Local secrets (never commit real keys)
-│
-├── customer_support_agent/
-│   ├── core/
-│   │   └── settings.py                  # Pydantic-settings configuration
-│   ├── schemas/
-│   │   └── api.py                       # Pydantic v2 request/response models
-│   ├── repositories/
-│   │   └── sqlite/
-│   │       ├── base.py                  # DB init + connection management
-│   │       ├── customer.py              # CustomersRepository
-│   │       ├── tickets.py               # TicketsRepository
-│   │       └── draft.py                 # DraftsRepository
-│   ├── integration/
-│   │   ├── rag/
-│   │   │   └── chroma_kb.py             # ChromaDB RAG ingestion + search
-│   │   ├── tools/
-│   │   │   └── support_tools.py         # LangChain tool definitions
-│   │   └── memory/                      # LangMem adapter (planned)
-│   ├── services/                        # Copilot + draft orchestration (planned)
-│   └── api/                             # FastAPI app factory + routers (planned)
-│
-├── knowledge_base/                      # Insurance policy markdown documents
-│   ├── insurance-auto-claim-procedures.md
-│   ├── insurance-auto-coverage-rules.md
-│   ├── insurance-auto-faq.md
-│   ├── insurance-auto-fraud-indicators.md
-│   └── insurance-auto-total-loss-rules.md
-│
-├── notebooks/
-│   ├── main.py                          # Working LangMem + LangGraph prototype
-│   └── experiments.ipynb                # Memory and agent experiments
-│
-├── data/
-│   ├── support.db                       # SQLite database
-│   ├── chroma_rag/                      # ChromaDB RAG persistence
-│   └── chroma_mem0/                     # ChromaDB memory persistence
-│
-├── docs/
-│   ├── Project_Master_Documentation.md
-│   ├── Customer_Support_Agent_Project_Report.md
-│   └── EC2_deployment_flow.md
-│
-└── tests/                               # Test suite (planned)
+```text
+.
+|-- app.py
+|-- main.py
+|-- pyproject.toml
+|-- customer_support_agent/
+|   |-- api/
+|   |-- core/
+|   |-- integration/
+|   |   |-- memory/
+|   |   |-- rag/
+|   |   `-- tools/
+|   |-- repositories/
+|   |   `-- sqlite/
+|   |-- schemas/
+|   `-- services/
+|-- knowledge_base/
+|-- notebooks/
+|-- docs/
+`-- tests/
 ```
 
----
+## Getting Started
 
-## Prerequisites
+### Prerequisites
 
-- Python 3.12+
-- [`uv`](https://docs.astral.sh/uv/) package manager
-- Groq API key — [console.groq.com](https://console.groq.com)
-- Google API key (for Gemini embeddings) — [console.cloud.google.com](https://console.cloud.google.com)
+- Python 3.12 or later
+- `uv`
+- A Groq API key for AI draft generation
+- A Google API key for Gemini embeddings if you want semantic retrieval and memory indexing
 
----
+### Install Dependencies
 
-## Quick Start
-
-### 1. Clone the repository
-
-```bash
-git clone https://github.com/Vishalkumarjaiswal16/Insurance-Claim-Support-AI-Agent.git
-cd Insurance-Claim-Support-AI-Agent
-```
-
-### 2. Install dependencies
+Install the backend dependencies:
 
 ```bash
 uv sync
 ```
 
-### 3. Configure environment
-
-Copy the example env file and fill in your API keys:
+Install the Streamlit UI dependency as well:
 
 ```bash
-cp .env.example .env
+uv sync --extra dashboard
 ```
+
+### Configure Environment
+
+Create a `.env` file in the project root.
 
 ```env
-# .env
-GROQ_API_KEY=your_groq_api_key_here
-GOOGLE_API_KEY=your_google_api_key_here
+GROQ_API_KEY=your_groq_api_key
+GOOGLE_API_KEY=your_google_api_key
 
-# Optional overrides
-LLM_MODEL=llama-3.1-8b-instant
-GOOGLE_EMBEDDING_MODEL=gemini-embedding-001
+GROQ_MODEL=llama-3.1-8b-instant
+LLM_TEMPERATURE=0.2
+
+API_HOST=0.0.0.0
+API_PORT=8000
 ```
 
-### 4. Ingest the knowledge base
+Important notes:
+
+- `GROQ_API_KEY` is required to generate drafts.
+- `GOOGLE_API_KEY` is recommended for Gemini embeddings used by retrieval and semantic memory.
+- The RAG layer sets both `GOOGLE_API_KEY` and `GEMINI_API_KEY` internally when possible to stay compatible with dependency differences.
+
+## Running the Application
+
+### 1. Start the API
 
 ```bash
-uv run python -c "
-from customer_support_agent.integration.rag.chroma_kb import KnowledgeBaseService
-from customer_support_agent.core import get_settings
-svc = KnowledgeBaseService(get_settings())
-result = svc.ingest_directory()
-print(result)
-"
+uv run python main.py
 ```
 
-### 5. Run the prototype agent
+The API will be available at `http://localhost:8000`.
+
+Interactive API docs are available at:
+
+```text
+http://localhost:8000/docs
+```
+
+### 2. Start the Streamlit Workbench
+
+In a second terminal:
 
 ```bash
-uv run python notebooks/main.py
+uv run streamlit run app.py
 ```
 
----
+By default, the dashboard talks to `http://localhost:8000`. You can override it with:
 
-## Configuration Reference
+```env
+API_BASE_URL=http://localhost:8000
+```
 
-All configuration is managed via `customer_support_agent/core/settings.py` using `pydantic-settings`. Values can be set in `.env` or as environment variables.
+## Knowledge Base Ingestion
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `GROQ_API_KEY` | — | Groq API key (required) |
-| `GOOGLE_API_KEY` | — | Google API key for embeddings (required) |
-| `LLM_MODEL` | `llama-3.1-8b-instant` | Groq model ID |
-| `GOOGLE_EMBEDDING_MODEL` | `gemini-embedding-001` | Embedding model |
-| `DATA_DIR` | `data/` | Directory for DB and vector stores |
-| `KNOWLEDGE_BASE_DIR` | `knowledge_base/` | Source documents for RAG |
-| `RAG_TOP_K` | `5` | Number of KB chunks to retrieve |
-| `CHUNK_SIZE` | `800` | Token size per document chunk |
-| `CHUNK_OVERLAP` | `100` | Overlap between chunks |
-| `DASHBOARD_PORT` | `8501` | Streamlit dashboard port |
-| `API_PORT` | `8000` | FastAPI server port |
+Knowledge documents are read from `knowledge_base/` and indexed into ChromaDB.
 
----
+You can ingest them from the dashboard sidebar or by calling the API:
 
-## API Endpoints
+```powershell
+Invoke-RestMethod `
+  -Method Post `
+  -Uri "http://localhost:8000/api/knowledge/ingest" `
+  -ContentType "application/json" `
+  -Body '{"clear_existing": false}'
+```
 
-> **Note:** The FastAPI layer is planned. The schemas and data layer are fully implemented.
+The ingestion response includes:
+
+- `files_indexed`
+- `chunks_indexed`
+- `collection_count`
+
+## Typical Workflow
+
+1. Start the API and dashboard.
+2. Ingest the knowledge base.
+3. Register a new claim from the Streamlit workbench.
+4. Let the system auto-generate a draft or trigger generation manually.
+5. Review the draft, tool output, knowledge hits, and memory hits.
+6. Approve or discard the recommendation.
+7. On approval, the claim is marked resolved and the accepted resolution is stored as memory.
+
+## API Summary
 
 ### Health
 
-| Method | Path | Description |
-|--------|------|-------------|
-| `GET` | `/health` | Health probe — returns `{"status": "ok"}` |
+| Method | Path | Purpose |
+| --- | --- | --- |
+| `GET` | `/health` | Service health check |
 
 ### Tickets
 
-| Method | Path | Description |
-|--------|------|-------------|
-| `POST` | `/api/tickets` | Create a ticket (+ customer upsert), optional auto-draft |
-| `GET` | `/api/tickets` | List all tickets |
-| `GET` | `/api/tickets/{ticket_id}` | Fetch a single ticket |
-| `POST` | `/api/tickets/{ticket_id}/generate-draft` | Manually trigger draft generation |
+| Method | Path | Purpose |
+| --- | --- | --- |
+| `POST` | `/api/tickets` | Create a ticket and optionally queue background draft generation |
+| `GET` | `/api/tickets` | List tickets |
+| `GET` | `/api/tickets/{ticket_id}` | Fetch a ticket |
+| `POST` | `/api/tickets/{ticket_id}/generate-draft` | Generate and store a draft immediately |
 
-**Create ticket request body:**
+### Drafts
+
+| Method | Path | Purpose |
+| --- | --- | --- |
+| `GET` | `/api/tickets/{ticket_id}/drafts/latest` | Get the latest draft for a ticket |
+| `PATCH` | `/api/drafts/{draft_id}` | Update draft content and/or status |
+
+Draft status values:
+
+- `pending`
+- `accepted`
+- `discarded`
+
+### Knowledge
+
+| Method | Path | Purpose |
+| --- | --- | --- |
+| `POST` | `/api/knowledge/ingest` | Ingest local knowledge documents into Chroma |
+
+### Memory
+
+| Method | Path | Purpose |
+| --- | --- | --- |
+| `GET` | `/api/customers/{customer_id}/memories` | List stored customer and company memories |
+| `GET` | `/api/customers/{customer_id}/memory-search` | Search memory using a query and limit |
+
+## Example Ticket Payload
 
 ```json
 {
   "customer_email": "claimant@example.com",
-  "customer_name": "Jane Doe",
-  "customer_company": "Acme Corp",
-  "subject": "Stolen vehicle claim - policy #A12345",
-  "description": "My vehicle was stolen from the parking lot on April 18th...",
+  "customer_name": "Alex Rivera",
+  "customer_company": "Acme Fleet",
+  "subject": "Rear-end collision claim",
+  "description": "Vehicle was struck from behind at a stoplight. Rear bumper damage and towing required.",
   "priority": "high",
   "auto_generate": true
 }
 ```
 
-### Drafts
+## Configuration Reference
 
-| Method | Path | Description |
-|--------|------|-------------|
-| `GET` | `/api/drafts/{ticket_id}` | Fetch latest draft for a ticket |
-| `PATCH` | `/api/drafts/{draft_id}` | Update draft content or status |
+Core settings are defined in `customer_support_agent/core/settings.py`.
 
-**Draft status values:** `pending` → `accepted` or `discarded`
+| Variable | Default | Description |
+| --- | --- | --- |
+| `GROQ_API_KEY` | empty | Required for AI draft generation |
+| `GROQ_MODEL` | `llama-3.1-8b-instant` | Groq model identifier |
+| `LLM_TEMPERATURE` | `0.2` | Draft generation temperature |
+| `GOOGLE_API_KEY` | empty | Recommended for Gemini embeddings |
+| `GOOGLE_EMBEDDING_MODEL` | `gemini-embedding-001` | Embedding model for retrieval and memory |
+| `WORKSPACE_DIR` | auto-detected | Project root used for relative paths |
+| `DATA_DIR` | `data` | Root data directory |
+| `DB_PATH` | `data/support.db` | SQLite database file |
+| `CHROMA_RAG_DIR` | `data/chroma_rag` | Chroma persistence directory for RAG |
+| `CHROMA_MEM0_DIR` | `data/chroma_mem0` | Memory-related local data directory |
+| `KNOWLEDGE_BASE_DIR` | `knowledge_base` | Source directory for knowledge documents |
+| `RAG_CHUNK_SIZE` | `800` | Chunk size for document ingestion |
+| `RAG_CHUNK_OVERLAP` | `120` | Chunk overlap for document ingestion |
+| `RAG_TOP_K` | `4` | Number of knowledge hits retrieved |
+| `MEM0_TOP_K` | `5` | Number of memory hits retrieved |
+| `API_HOST` | `0.0.0.0` | API bind host |
+| `API_PORT` | `8000` | API bind port |
+| `DASHBOARD_API_URL` | derived | API base URL used by the dashboard when not explicitly set |
 
-On `accepted`: ticket status is set to `resolved` and the resolution is persisted to memory.
+## Testing
 
-### Knowledge Base
-
-| Method | Path | Description |
-|--------|------|-------------|
-| `POST` | `/api/knowledge/ingest` | Ingest `knowledge_base/` files into ChromaDB |
-
-```json
-{ "clear_existing": false }
-```
-
-### Memory
-
-| Method | Path | Description |
-|--------|------|-------------|
-| `GET` | `/api/customers/{customer_id}/memories` | List customer + company memories |
-| `GET` | `/api/customers/{customer_id}/memory-search` | Semantic memory search (`?query=...&limit=5`) |
-
----
-
-## Core Modules
-
-### `repositories/sqlite/`
-
-Three repository classes over a shared SQLite connection manager:
-
-- **`CustomersRepository`** — `create_or_get(email, name, company)` — idempotent upsert with race condition handling
-- **`TicketsRepository`** — full CRUD, status transitions, open-ticket count per customer
-- **`DraftsRepository`** — draft lifecycle (create, update, get-latest, get-with-context JOIN)
-
-All repositories use context-manager connections with `PRAGMA foreign_keys = ON` and `PRAGMA busy_timeout = 5000`.
-
-### `integration/rag/chroma_kb.py`
-
-`KnowledgeBaseService` wraps a `chromadb.PersistentClient`:
-
-- **Ingestion** — reads `.md`/`.txt` from `knowledge_base/`, splits with `RecursiveCharacterTextSplitter`, upserts chunks with SHA-1 deduplication IDs
-- **Search** — returns top-k chunks with source file and distance score
-
-### `integration/tools/support_tools.py`
-
-Two LangChain tools exposed to the agent runtime via `get_support_tools()`:
-
-- **`lookup_customer_plan`** — returns the customer's plan tier, SLA, and priority queue
-- **`lookup_open_ticket_load`** — queries SQLite for open ticket count and returns a load band (`low / medium / high`)
-
-### `schemas/api.py`
-
-Full Pydantic v2 schema set including `TicketCreateRequest`, `TicketResponse`, `DraftResponse`, `StructuredDraftContext` (with version field for schema evolution), `DraftSignals`, `DraftHighlights`, and `DraftToolCall`.
-
----
-
-## Streamlit Dashboard (Planned)
-
-The dashboard (`app.py`) will provide four panels:
-
-| Panel | Purpose |
-|-------|---------|
-| **Claim Registration** | Submit new FNOL with customer info, description, priority, auto-generate toggle |
-| **Claim Operations** | Browse tickets, trigger recommendation generation |
-| **Draft Review** | Edit AI draft, approve or request more info, view context transparency (memory hits, KB chunks, tool calls) |
-| **Claim History Probe** | Run semantic search over customer memory |
-
----
-
-## Deployment
-
-### Docker (Planned)
+Run the test suite with:
 
 ```bash
-docker compose up -d --build
+uv run pytest
 ```
 
-| Service | Port |
-|---------|------|
-| FastAPI API | `8000` |
-| Streamlit Dashboard | `8501` |
+The current tests cover:
 
-### AWS EC2 (Planned)
+- basic API health
+- draft status lifecycle behavior
+- LangMem store add/search/list fallback behavior
 
-CI/CD via GitHub Actions:
+## Current State
 
-- **CI** — runs on every PR and non-main branch push: `uv sync --dev` → `pytest`
-- **CD** — triggers on push to `main`: packages app, `scp` to EC2, `docker compose up --build`, health check
+- FastAPI application and routers
+- Streamlit operator workbench
+- SQLite repositories and schema initialization
+- Chroma-based knowledge ingestion and retrieval
+- Groq-backed draft generation service
+- claim-memory persistence and search
+- basic automated tests
 
-Required GitHub secrets: `EC2_HOST`, `EC2_USER`, `EC2_SSH_KEY`
-
-See `docs/EC2_deployment_flow.md` for the full deployment runbook.
-
----
-
-## Implementation Status
-
-| Component | Status |
-|-----------|--------|
-| Settings system | ✅ Complete |
-| Pydantic schemas | ✅ Complete |
-| SQLite repositories | ✅ Complete |
-| ChromaDB RAG service | ✅ Complete |
-| LangChain tools | ✅ Complete |
-| LangMem prototype | ✅ Working (notebooks/) |
-| `copilot_service.py` | 🔲 Planned |
-| `draft_service.py` | 🔲 Planned |
-| LangMem memory adapter | 🔲 Planned |
-| FastAPI app + routers | 🔲 Planned |
-| Streamlit dashboard | 🔲 Planned |
-| Docker / Compose | 🔲 Planned |
-| GitHub Actions CI/CD | 🔲 Planned |
-| Test suite | 🔲 Planned |
-
----
-
-## Knowledge Base Documents
-
-The `knowledge_base/` directory contains the insurance policy documents indexed by the RAG system:
-
-| File | Content |
-|------|---------|
-| `insurance-auto-claim-procedures.md` | Step-by-step FNOL and claims filing process |
-| `insurance-auto-coverage-rules.md` | Coverage eligibility and exclusions |
-| `insurance-auto-faq.md` | Common claimant questions and answers |
-| `insurance-auto-fraud-indicators.md` | Fraud detection flags for adjusters |
-| `insurance-auto-total-loss-rules.md` | Total loss determination criteria |
-
----
 
 ## License
 
-MIT
+This project is licensed under the MIT License. See `LICENSE` for details.
