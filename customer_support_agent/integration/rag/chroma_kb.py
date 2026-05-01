@@ -43,7 +43,7 @@ class KnowledgeBaseService:
                 )
             except Exception as exc:
                 raise RuntimeError(
-                    "Gemini embedding initialization failed. Install `google-genai` and verify GOOGLE_API_KEY."
+                    "Gemini embedding initialization failed. Install `google-genai` and verify GOOGLE_API_KEY or GEMINI_API_KEY (this code sets both when possible)."
                 ) from exc
 
         return embedding_functions.DefaultEmbeddingFunction()
