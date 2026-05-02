@@ -9,6 +9,21 @@
 __pycache__/
 *.py[cod]
 *.pyo
+.venv/
 
 # Runtime-generated data (vector stores, local DBs, etc.)
 data/
+
+# Testing & coverage
+.pytest_cache/
+.coverage
+htmlcov/
+coverage.xml
+*.cover
+
+# Logs
+*.log
+logs/
+
+# Jupyter
+.ipynb_checkpoints/
