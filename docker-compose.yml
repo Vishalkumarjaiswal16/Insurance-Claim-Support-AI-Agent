@@ -1,0 +1,44 @@
+x-app-image: &app-image
+  image: support-copilot:local
+  build: .
+
+services:
+  api:
+    <<: *app-image
+    command: .venv/bin/python main.py
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:8000/health || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 10s
+    networks:
+      default:
+        aliases:
+          - api
+          - support-copilot-api
+    volumes:
+      - ./data:/app/data
+      - ./knowledge_base:/app/knowledge_base
+
+  dashboard:
+    <<: *app-image
+    command: .venv/bin/streamlit run app.py --server.address 0.0.0.0 --server.port 8501
+    ports:
+      - "8501:8501"
+    env_file:
+      - .env
+    environment:
+      - API_BASE_URL=http://api:8000
+    depends_on:
+      api:
+        condition: service_healthy
+    networks:
+      - default
+    volumes:
+      - ./data:/app/data
+      - ./knowledge_base:/app/knowledge_base
