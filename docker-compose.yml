@@ -1,6 +1,10 @@
+x-app-image: &app-image
+  image: support-copilot:local
+  build: .
+
 services:
   api:
-    build: .
+    <<: *app-image
     container_name: support-copilot-api
     command: .venv/bin/python main.py
     ports:
@@ -23,7 +27,7 @@ services:
       - ./knowledge_base:/app/knowledge_base
 
   dashboard:
-    build: .
+    <<: *app-image
     container_name: support-copilot-dashboard
     command: .venv/bin/streamlit run app.py --server.address 0.0.0.0 --server.port 8501
     ports:
