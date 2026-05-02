@@ -27,7 +27,7 @@ jobs:
         uses: astral-sh/setup-uv@v4
 
       - name: Install dependencies
-        run: uv sync --dev
+        run: uv sync
 
       - name: Run tests
         run: uv run --with pytest pytest -q
@@ -50,6 +50,25 @@ jobs:
           mkdir -p ~/.ssh
           printf "%s" "${{ secrets.EC2_SSH_KEY }}" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
+          chmod 700 ~/.ssh
+
+      - name: Configure SSH known hosts
+        env:
+          EC2_HOST: ${{ secrets.EC2_HOST }}
+          EC2_PORT: ${{ secrets.EC2_PORT }}
+          EC2_KNOWN_HOSTS: ${{ secrets.EC2_KNOWN_HOSTS }}
+        run: |
+          set -euo pipefail
+          PORT="${EC2_PORT:-22}"
+          HOST="${EC2_HOST_STATIC:-$EC2_HOST}"
+          touch ~/.ssh/known_hosts
+          chmod 644 ~/.ssh/known_hosts
+
+          if [ -n "${EC2_KNOWN_HOSTS:-}" ]; then
+            printf "%s\n" "$EC2_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          else
+            ssh-keyscan -p "$PORT" -H "$HOST" >> ~/.ssh/known_hosts
+          fi
 
       - name: Package release archive
         run: |
@@ -79,7 +98,8 @@ jobs:
 
           for attempt in 1 2 3; do
             if scp -P "$PORT" \
-              -o StrictHostKeyChecking=no \
+              -o StrictHostKeyChecking=yes \
+              -o UserKnownHostsFile=~/.ssh/known_hosts \
               -o ConnectTimeout=30 \
               /tmp/release.tar.gz "${EC2_USER}@${HOST}:/tmp/customer_support_agent_release.tar.gz"; then
               break
@@ -113,7 +133,8 @@ jobs:
 
           for deploy_attempt in 1 2 3; do
             if ssh -p "$PORT" \
-              -o StrictHostKeyChecking=no \
+              -o StrictHostKeyChecking=yes \
+              -o UserKnownHostsFile=~/.ssh/known_hosts \
               -o ConnectTimeout=30 \
               "${EC2_USER}@${HOST}" \
               "APP_DIR='${APP_DIR}' bash -s" <<'EOF_REMOTE'; then
@@ -124,6 +145,19 @@ jobs:
             mkdir -p "$APP_DIR"
             echo "APP_DIR not writable, using fallback: $APP_DIR"
           fi
+
+          APP_DIR="$(readlink -f "$APP_DIR")"
+          if [ -z "$APP_DIR" ] || [ "$APP_DIR" = "/" ]; then
+            echo "ERROR: Refusing to deploy to invalid APP_DIR"
+            exit 1
+          fi
+
+          find "$APP_DIR" -mindepth 1 -maxdepth 1 \
+            ! -name '.env' \
+            ! -name 'data' \
+            -exec rm -rf -- {} +
+
+          mkdir -p "$APP_DIR/data"
 
           tar -xzf /tmp/customer_support_agent_release.tar.gz -C "$APP_DIR"
 
@@ -160,9 +194,7 @@ jobs:
           echo "Reclaiming disk space before build..."
           sudo docker system df || true
           $DOCKER_COMPOSE_CMD down --remove-orphans || true
-          sudo docker builder prune -af || true
-          sudo docker image prune -af || true
-          sudo docker container prune -f || true
+          sudo docker builder prune -af --filter "until=24h" || true
           sudo docker system df || true
 
           $DOCKER_COMPOSE_CMD up -d --build --force-recreate --remove-orphans
