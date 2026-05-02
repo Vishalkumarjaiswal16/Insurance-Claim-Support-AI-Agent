@@ -60,24 +60,29 @@ jobs:
         run: |
           set -euo pipefail
           PORT="${EC2_PORT:-22}"
-          HOST="${EC2_HOST_STATIC:-$EC2_HOST}"
+          HOST="${EC2_HOST}"
           touch ~/.ssh/known_hosts
           chmod 644 ~/.ssh/known_hosts
 
-          if [ -n "${EC2_KNOWN_HOSTS:-}" ]; then
-            printf "%s\n" "$EC2_KNOWN_HOSTS" > ~/.ssh/known_hosts
-          else
-            ssh-keyscan -p "$PORT" -H "$HOST" >> ~/.ssh/known_hosts
+          if [ -z "${EC2_KNOWN_HOSTS:-}" ]; then
+            echo "ERROR: EC2_KNOWN_HOSTS is required and must contain the pinned SSH host key entry for ${HOST}:${PORT}."
+            exit 1
           fi
+
+          printf "%s\n" "$EC2_KNOWN_HOSTS" > ~/.ssh/known_hosts
 
       - name: Package release archive
         run: |
           tar \
             --exclude='.git' \
+            --exclude='.github' \
             --exclude='.venv' \
             --exclude='__pycache__' \
             --exclude='.pytest_cache' \
             --exclude='artifacts' \
+            --exclude='docs' \
+            --exclude='notebooks' \
+            --exclude='tests' \
             -czf /tmp/release.tar.gz .
 
       - name: Upload archive to EC2
@@ -88,7 +93,7 @@ jobs:
         run: |
           set -euo pipefail
           PORT="${EC2_PORT:-22}"
-          HOST="${EC2_HOST_STATIC:-$EC2_HOST}"
+          HOST="${EC2_HOST}"
           echo "Uploading archive to ${EC2_USER}@${HOST}:${PORT}"
           if ! timeout 10 bash -c "cat < /dev/null > /dev/tcp/${HOST}/${PORT}"; then
             echo "ERROR: Cannot reach ${HOST}:${PORT} from GitHub runner."
@@ -121,7 +126,7 @@ jobs:
         run: |
           set -euo pipefail
           PORT="${EC2_PORT:-22}"
-          HOST="${EC2_HOST_STATIC:-$EC2_HOST}"
+          HOST="${EC2_HOST}"
           APP_DIR="${EC2_APP_DIR:-/opt/customer_support_agent}"
 
           echo "Deploying to ${EC2_USER}@${HOST}:${PORT}"

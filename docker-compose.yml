@@ -5,7 +5,6 @@ x-app-image: &app-image
 services:
   api:
     <<: *app-image
-    container_name: support-copilot-api
     command: .venv/bin/python main.py
     ports:
       - "8000:8000"
@@ -28,7 +27,6 @@ services:
 
   dashboard:
     <<: *app-image
-    container_name: support-copilot-dashboard
     command: .venv/bin/streamlit run app.py --server.address 0.0.0.0 --server.port 8501
     ports:
       - "8501:8501"
