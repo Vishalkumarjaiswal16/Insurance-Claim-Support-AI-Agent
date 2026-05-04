@@ -1,314 +1,253 @@
-# Insurance Claim Support AI Agent
+# 🛡️ Insurance Claim Support AI Agent
 
-An AI-assisted claims operations workspace for insurance support teams and adjusters. The project combines a FastAPI backend, a Streamlit workbench, SQLite persistence, Chroma-based retrieval, and LangGraph-powered draft generation to help teams produce grounded claim responses faster while keeping the final decision with a human reviewer.
+[![Python 3.12](https://img.shields.io/badge/python-3.12-blue.svg)](https://www.python.org/downloads/release/python-3120/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.136.1-00a393.svg)](https://fastapi.tiangolo.com)
+[![Streamlit](https://img.shields.io/badge/Streamlit-1.56.0-FF4B4B.svg)](https://streamlit.io)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-## Overview
+An enterprise-grade, AI-assisted claims operations workspace designed for insurance support teams and adjusters. This system combines a robust FastAPI backend, an intuitive Streamlit workbench, and advanced Agentic AI workflows to drastically reduce claim processing time while ensuring accurate, policy-compliant, and context-aware responses.
 
-This project is designed for first notice of loss (FNOL) and claim-support workflows. It helps an adjuster or support operator:
+The architecture emphasizes a **human-in-the-loop** approach: the AI acts as a high-powered copilot to retrieve context and generate drafts, but licensed professionals retain final decision-making authority.
 
-- register a new claim
-- look up customer and claim history
-- retrieve relevant policy and process guidance from a knowledge base
-- generate a draft recommendation with traceable context
-- approve or discard the draft inside a review flow
-- store approved outcomes back into memory for future assistance
+---
 
-The system is intentionally human-in-the-loop. AI generates recommendations, but a licensed adjuster or support professional remains responsible for the final decision.
+## 🌟 Key Features
 
-## Key Capabilities
+* **Copilot-Assisted FNOL Intake:** Streamlines the First Notice of Loss (FNOL) process with automated background draft generation based on claim details.
+* **Intelligent Draft Generation (Agentic AI):** Powered by LangGraph and Groq LLM, the agent utilizes a ReAct framework to reason over claim data, invoking necessary support tools (like SLA and workload lookups).
+* **Context-Aware RAG Engine:** Uses ChromaDB and Google Gemini embeddings to query policy documents, regulation manuals, and internal guidelines instantly.
+* **Persistent Customer Memory:** Leverages LangMem to store and retrieve historical claimant interactions and approved resolutions, ensuring consistent context across multiple claims.
+* **Human-in-the-loop Review:** A Streamlit workbench allows adjusters to probe claim history, review AI tool execution traces, and approve or discard AI-generated recommendations.
+* **Production-Ready Deployment:** Includes Docker and `docker-compose` setup alongside GitHub Actions workflows for automated testing and EC2 deployment.
 
-- FastAPI service with routes for tickets, drafts, knowledge ingestion, memory lookup, and health checks
-- Streamlit workbench for claim registration, draft review, and claim-history probing
-- SQLite repositories for customers, tickets, and drafts
-- ChromaDB-backed retrieval over local markdown and text knowledge documents
-- LangMem-based customer and company memory with graceful fallback behavior
-- Groq-powered draft generation using LangGraph and tool calling
-- Draft context capture, including knowledge hits, memory hits, and tool execution summaries
+---
 
-## Architecture
+## 🏗️ System Architecture
 
-```text
-Streamlit UI (app.py)
-        |
-        v
-FastAPI application (main.py -> app_factory.py)
-        |
-        +-- Tickets router
-        +-- Drafts router
-        +-- Knowledge router
-        +-- Memory router
-        +-- Health router
-        |
-        v
-Service layer
-        +-- DraftService
-        +-- KnowledgeService
-        +-- SupportCopilot
-                +-- Groq chat model
-                +-- LangGraph agent
-                +-- Support tools
-                +-- CustomerMemoryStore
-                +-- KnowledgeBaseService
-        |
-        v
-Persistence layer
-        +-- SQLite (tickets, customers, drafts)
-        +-- Chroma RAG store
-        +-- LangMem / InMemoryStore-backed memory
+The project is built on a modular, multi-layer architecture to ensure clear separation of concerns, scalability, and maintainability.
+
+```mermaid
+graph TD
+    UI[Streamlit Dashboard<br/>app.py]
+    API[FastAPI Backend<br/>main.py]
+    
+    subgraph Service Layer
+        DraftSvc[Draft Service]
+        KbSvc[Knowledge Service]
+        Copilot[Support Copilot<br/>LangGraph Agent]
+    end
+    
+    subgraph AI & Integrations
+        Groq[Groq LLM]
+        Embeddings[Google Gemini Embeddings]
+        Tools[Support Tools<br/>SLA/Load Lookup]
+    end
+    
+    subgraph Persistence Layer
+        SQLite[(SQLite DB<br/>Relational Data)]
+        Chroma[(ChromaDB<br/>Policy RAG)]
+        LangMem[(LangMem Store<br/>Semantic Memory)]
+    end
+    
+    UI <-->|REST API| API
+    API --> DraftSvc
+    API --> KbSvc
+    API --> Copilot
+    
+    DraftSvc --> SQLite
+    DraftSvc --> Copilot
+    
+    Copilot --> Groq
+    Copilot --> Tools
+    Copilot --> Chroma
+    Copilot --> LangMem
+    KbSvc --> Chroma
+    
+    Chroma -.-> Embeddings
+    LangMem -.-> Embeddings
 ```
 
-## Tech Stack
+### Components
+* **Frontend:** Streamlit (`app.py`) serves as the adjuster workbench.
+* **API Gateway/Backend:** FastAPI handles robust routing, validation (Pydantic), and lifecycle management.
+* **Data Stores:** 
+  * **SQLite:** Relational source of truth for Customers, Tickets, and Drafts.
+  * **ChromaDB:** Local vector database for knowledge base documents.
+  * **InMemoryStore/LangMem:** Semantic memory store for customer claim history.
 
-| Area | Technology |
-| --- | --- |
-| Language | Python 3.12 |
-| API | FastAPI, Uvicorn |
-| UI | Streamlit |
-| Agent runtime | LangGraph, LangChain |
-| LLM | Groq |
-| Retrieval | ChromaDB |
-| Embeddings | Google Gemini embeddings |
-| Memory | LangMem with LangGraph `InMemoryStore` |
-| Database | SQLite |
-| Settings | `pydantic-settings` |
-| Package manager | `uv` |
-| Testing | `pytest` |
+---
 
-## Repository Layout
+## 🔄 Architecture Flow: Claim Processing & Draft Generation
 
-```text
-.
-|-- app.py
-|-- main.py
-|-- pyproject.toml
-|-- customer_support_agent/
-|   |-- api/
-|   |-- core/
-|   |-- integration/
-|   |   |-- memory/
-|   |   |-- rag/
-|   |   `-- tools/
-|   |-- repositories/
-|   |   `-- sqlite/
-|   |-- schemas/
-|   `-- services/
-|-- knowledge_base/
-|-- notebooks/
-|-- docs/
-`-- tests/
+This sequence details the end-to-end lifecycle of a claim registration, background AI processing, and human approval.
+
+```mermaid
+sequenceDiagram
+    participant Operator as Claims Adjuster
+    participant UI as Streamlit UI
+    participant API as FastAPI
+    participant DB as SQLite
+    participant Agent as LangGraph Copilot
+    participant Mem as Memory & RAG
+    participant LLM as Groq LLM
+
+    %% FNOL Submission
+    Operator->>UI: Submit Claim (FNOL)
+    UI->>API: POST /api/tickets
+    API->>DB: Save Customer & Ticket
+    API-->>UI: 200 OK (Ticket Created)
+    
+    %% AI Generation (Background)
+    API->>Agent: Trigger Background Draft Generation
+    Agent->>Mem: Retrieve Customer History & KB Policies
+    Mem-->>Agent: Relevant Semantic Context
+    Agent->>LLM: Formulate Plan (ReAct Framework)
+    LLM-->>Agent: Request Tool Calls (e.g. check SLAs)
+    Agent->>LLM: Return Tool Execution Results
+    LLM-->>Agent: Finalize Draft Recommendation
+    Agent->>DB: Save Draft & Execution Context
+    
+    %% Human Review & Approval
+    Operator->>UI: View Pending Draft & AI Traces
+    Operator->>UI: Edit & Approve Recommendation
+    UI->>API: PATCH /api/drafts/{id} (status: accepted)
+    API->>DB: Update Draft & Resolve Ticket
+    API->>Mem: Save Approved Resolution to Memory (LangMem)
+    API-->>UI: 200 OK
 ```
 
-## Getting Started
+---
+
+## 🛠️ Technology Stack
+
+| Category | Technology |
+| :--- | :--- |
+| **Language** | Python 3.12+ |
+| **API Framework** | FastAPI, Uvicorn |
+| **Frontend UI** | Streamlit |
+| **AI Agent Runtime**| LangGraph, LangChain |
+| **LLM Inference** | Groq (`llama-3.1-8b-instant`) |
+| **Vector DB / RAG**| ChromaDB |
+| **Embeddings** | Google Gemini (`gemini-embedding-001`) |
+| **Semantic Memory** | LangMem (backed by InMemoryStore) |
+| **Relational DB** | SQLite |
+| **Config Mgmt** | `pydantic-settings` |
+| **Dependency Mgmt** | `uv` |
+| **Testing/CI** | `pytest`, GitHub Actions |
+
+---
+
+## 🚀 Getting Started
 
 ### Prerequisites
 
-- Python 3.12 or later
-- `uv`
-- A Groq API key for AI draft generation
-- A Google API key for Gemini embeddings if you want semantic retrieval and memory indexing
+* Python 3.12+
+* `uv` package manager (`pip install uv`)
+* **Groq API Key:** Required for LLM draft generation.
+* **Google API Key:** Required for Gemini embeddings (semantic retrieval & memory).
 
-### Install Dependencies
+### 1. Installation
 
-Install the backend dependencies:
+Clone the repository and install dependencies using `uv`.
 
 ```bash
+# Install backend dependencies
 uv sync
-```
 
-Install the Streamlit UI dependency as well:
-
-```bash
+# Install frontend (Streamlit dashboard) dependencies
 uv sync --extra dashboard
 ```
 
-### Configure Environment
+### 2. Environment Configuration
 
-Create a `.env` file in the project root.
+Create a `.env` file in the project root:
 
 ```env
-GROQ_API_KEY=your_groq_api_key
-GOOGLE_API_KEY=your_google_api_key
+# AI Providers
+GROQ_API_KEY=your_groq_api_key_here
+GOOGLE_API_KEY=your_google_api_key_here
 
+# Model Settings
 GROQ_MODEL=llama-3.1-8b-instant
 LLM_TEMPERATURE=0.2
 
+# Server Configuration
 API_HOST=0.0.0.0
 API_PORT=8000
 ```
 
-Important notes:
+### 3. Running the Application locally
 
-- `GROQ_API_KEY` is required to generate drafts.
-- `GOOGLE_API_KEY` is recommended for Gemini embeddings used by retrieval and semantic memory.
-- The RAG layer sets both `GOOGLE_API_KEY` and `GEMINI_API_KEY` internally when possible to stay compatible with dependency differences.
-
-## Running the Application
-
-### 1. Start the API
-
+**Start the FastAPI Backend:**
 ```bash
 uv run python main.py
 ```
+*API available at `http://localhost:8000`*
+*Interactive API documentation (Swagger) at `http://localhost:8000/docs`*
 
-The API will be available at `http://localhost:8000`.
-
-Interactive API docs are available at:
-
-```text
-http://localhost:8000/docs
-```
-
-### 2. Start the Streamlit Workbench
-
-In a second terminal:
-
+**Start the Streamlit Workbench:**
+Open a new terminal session:
 ```bash
 uv run streamlit run app.py
 ```
+*Dashboard available at `http://localhost:8501`*
 
-By default, the dashboard talks to `http://localhost:8000`. You can override it with:
+---
 
-```env
-API_BASE_URL=http://localhost:8000
+## 📚 Knowledge Base Ingestion
+
+The system relies on local markdown documents stored in the `knowledge_base/` directory to ground the AI's recommendations in actual company policy.
+
+To ingest/index these documents into ChromaDB, you can either:
+1. Click **Ingest Policy & Regulation KB** in the Streamlit sidebar.
+2. Hit the API endpoint directly:
+
+```bash
+curl -X POST "http://localhost:8000/api/knowledge/ingest" \
+     -H "Content-Type: application/json" \
+     -d '{"clear_existing": false}'
 ```
 
-## Knowledge Base Ingestion
+---
 
-Knowledge documents are read from `knowledge_base/` and indexed into ChromaDB.
+## 🐳 Docker Deployment
 
-You can ingest them from the dashboard sidebar or by calling the API:
+The project is fully containerized for production parity.
 
-```powershell
-Invoke-RestMethod `
-  -Method Post `
-  -Uri "http://localhost:8000/api/knowledge/ingest" `
-  -ContentType "application/json" `
-  -Body '{"clear_existing": false}'
+```bash
+# Build and run using Docker Compose
+docker-compose up -d --build
+
+# View logs
+docker-compose logs -f
 ```
 
-The ingestion response includes:
+---
 
-- `files_indexed`
-- `chunks_indexed`
-- `collection_count`
+## 🧪 Testing
 
-## Typical Workflow
-
-1. Start the API and dashboard.
-2. Ingest the knowledge base.
-3. Register a new claim from the Streamlit workbench.
-4. Let the system auto-generate a draft or trigger generation manually.
-5. Review the draft, tool output, knowledge hits, and memory hits.
-6. Approve or discard the recommendation.
-7. On approval, the claim is marked resolved and the accepted resolution is stored as memory.
-
-## API Summary
-
-### Health
-
-| Method | Path | Purpose |
-| --- | --- | --- |
-| `GET` | `/health` | Service health check |
-
-### Tickets
-
-| Method | Path | Purpose |
-| --- | --- | --- |
-| `POST` | `/api/tickets` | Create a ticket and optionally queue background draft generation |
-| `GET` | `/api/tickets` | List tickets |
-| `GET` | `/api/tickets/{ticket_id}` | Fetch a ticket |
-| `POST` | `/api/tickets/{ticket_id}/generate-draft` | Generate and store a draft immediately |
-
-### Drafts
-
-| Method | Path | Purpose |
-| --- | --- | --- |
-| `GET` | `/api/tickets/{ticket_id}/drafts/latest` | Get the latest draft for a ticket |
-| `PATCH` | `/api/drafts/{draft_id}` | Update draft content and/or status |
-
-Draft status values:
-
-- `pending`
-- `accepted`
-- `discarded`
-
-### Knowledge
-
-| Method | Path | Purpose |
-| --- | --- | --- |
-| `POST` | `/api/knowledge/ingest` | Ingest local knowledge documents into Chroma |
-
-### Memory
-
-| Method | Path | Purpose |
-| --- | --- | --- |
-| `GET` | `/api/customers/{customer_id}/memories` | List stored customer and company memories |
-| `GET` | `/api/customers/{customer_id}/memory-search` | Search memory using a query and limit |
-
-## Example Ticket Payload
-
-```json
-{
-  "customer_email": "claimant@example.com",
-  "customer_name": "Alex Rivera",
-  "customer_company": "Acme Fleet",
-  "subject": "Rear-end collision claim",
-  "description": "Vehicle was struck from behind at a stoplight. Rear bumper damage and towing required.",
-  "priority": "high",
-  "auto_generate": true
-}
-```
-
-## Configuration Reference
-
-Core settings are defined in `customer_support_agent/core/settings.py`.
-
-| Variable | Default | Description |
-| --- | --- | --- |
-| `GROQ_API_KEY` | empty | Required for AI draft generation |
-| `GROQ_MODEL` | `llama-3.1-8b-instant` | Groq model identifier |
-| `LLM_TEMPERATURE` | `0.2` | Draft generation temperature |
-| `GOOGLE_API_KEY` | empty | Recommended for Gemini embeddings |
-| `GOOGLE_EMBEDDING_MODEL` | `gemini-embedding-001` | Embedding model for retrieval and memory |
-| `WORKSPACE_DIR` | auto-detected | Project root used for relative paths |
-| `DATA_DIR` | `data` | Root data directory |
-| `DB_PATH` | `data/support.db` | SQLite database file |
-| `CHROMA_RAG_DIR` | `data/chroma_rag` | Chroma persistence directory for RAG |
-| `CHROMA_MEM0_DIR` | `data/chroma_mem0` | Memory-related local data directory |
-| `KNOWLEDGE_BASE_DIR` | `knowledge_base` | Source directory for knowledge documents |
-| `RAG_CHUNK_SIZE` | `800` | Chunk size for document ingestion |
-| `RAG_CHUNK_OVERLAP` | `120` | Chunk overlap for document ingestion |
-| `RAG_TOP_K` | `4` | Number of knowledge hits retrieved |
-| `MEM0_TOP_K` | `5` | Number of memory hits retrieved |
-| `API_HOST` | `0.0.0.0` | API bind host |
-| `API_PORT` | `8000` | API bind port |
-| `DASHBOARD_API_URL` | derived | API base URL used by the dashboard when not explicitly set |
-
-## Testing
-
-Run the test suite with:
+Run the comprehensive test suite (which validates API health, draft lifecycle, and LangMem fallback behaviors):
 
 ```bash
 uv run pytest
 ```
 
-The current tests cover:
+---
 
-- basic API health
-- draft status lifecycle behavior
-- LangMem store add/search/list fallback behavior
+## 🌐 API Reference
 
-## Current State
+### Core Endpoints
 
-- FastAPI application and routers
-- Streamlit operator workbench
-- SQLite repositories and schema initialization
-- Chroma-based knowledge ingestion and retrieval
-- Groq-backed draft generation service
-- claim-memory persistence and search
-- basic automated tests
+* **`GET /health`**: Health check.
+* **`POST /api/tickets`**: Register a new claim/ticket and trigger background AI draft generation.
+* **`GET /api/tickets/{ticket_id}`**: Retrieve ticket details.
+* **`GET /api/tickets/{ticket_id}/drafts/latest`**: Fetch the most recent AI draft and execution context for a ticket.
+* **`PATCH /api/drafts/{draft_id}`**: Approve, edit, or discard an AI recommendation. Approving saves the decision to semantic memory.
+* **`POST /api/knowledge/ingest`**: Process and embed markdown knowledge documents.
+* **`GET /api/customers/{customer_id}/memory-search`**: Search a customer's semantic claim history.
 
+---
 
-## License
+## 📄 License
 
-This project is licensed under the MIT License. See `LICENSE` for details.
+This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
