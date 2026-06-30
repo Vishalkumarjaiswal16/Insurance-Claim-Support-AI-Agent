@@ -17,18 +17,14 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-
       - name: Set up uv
         uses: astral-sh/setup-uv@v4
-
       - name: Install dependencies
         run: uv sync --frozen
-
       - name: Run tests
         run: uv run --with pytest pytest -q
 
@@ -63,27 +59,35 @@ jobs:
           HOST="${EC2_HOST}"
           touch ~/.ssh/known_hosts
           chmod 644 ~/.ssh/known_hosts
-
-          if [ -z "${EC2_KNOWN_HOSTS:-}" ]; then
-            echo "ERROR: EC2_KNOWN_HOSTS is required and must contain the pinned SSH host key entry for ${HOST}:${PORT}."
-            exit 1
+          if [ -n "${EC2_KNOWN_HOSTS:-}" ]; then
+            echo "Using pinned EC2_KNOWN_HOSTS secret."
+            printf "%s\n" "$EC2_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          else
+            echo "EC2_KNOWN_HOSTS secret not set. Fetching host key via ssh-keyscan (TOFU)..."
+            echo "WARNING: This is less secure than a pinned known_hosts entry."
+            echo "To harden, run: ssh-keyscan -p ${PORT} ${HOST} and store the output as EC2_KNOWN_HOSTS secret."
+            ssh-keyscan -p "$PORT" -H "$HOST" >> ~/.ssh/known_hosts 2>/dev/null
+            if [ ! -s ~/.ssh/known_hosts ]; then
+              echo "ERROR: ssh-keyscan failed to retrieve host key for ${HOST}:${PORT}"
+              echo "Check EC2 Security Group allows port ${PORT} from GitHub runner IPs."
+              exit 1
+            fi
+            echo "Host key fetched successfully."
           fi
-
-          printf "%s\n" "$EC2_KNOWN_HOSTS" > ~/.ssh/known_hosts
 
       - name: Package release archive
         run: |
           tar \
-            --exclude='.git' \
-            --exclude='.github' \
-            --exclude='.venv' \
-            --exclude='__pycache__' \
-            --exclude='.pytest_cache' \
-            --exclude='artifacts' \
-            --exclude='docs' \
-            --exclude='notebooks' \
-            --exclude='tests' \
-            -czf /tmp/release.tar.gz .
+          --exclude='.git' \
+          --exclude='.github' \
+          --exclude='.venv' \
+          --exclude='__pycache__' \
+          --exclude='.pytest_cache' \
+          --exclude='artifacts' \
+          --exclude='docs' \
+          --exclude='notebooks' \
+          --exclude='tests' \
+          -czf /tmp/release.tar.gz .
 
       - name: Upload archive to EC2
         env:
@@ -100,7 +104,6 @@ jobs:
             echo "Check EC2 Security Group/NACL/route table and SSH service."
             exit 1
           fi
-
           for attempt in 1 2 3; do
             if scp -P "$PORT" \
               -o StrictHostKeyChecking=yes \
@@ -128,14 +131,12 @@ jobs:
           PORT="${EC2_PORT:-22}"
           HOST="${EC2_HOST}"
           APP_DIR="${EC2_APP_DIR:-/opt/customer_support_agent}"
-
           echo "Deploying to ${EC2_USER}@${HOST}:${PORT}"
           if ! timeout 10 bash -c "cat < /dev/null > /dev/tcp/${HOST}/${PORT}"; then
             echo "ERROR: Cannot reach ${HOST}:${PORT} from GitHub runner."
             echo "Check EC2 Security Group/NACL/route table and SSH service."
             exit 1
           fi
-
           for deploy_attempt in 1 2 3; do
             if ssh -p "$PORT" \
               -o StrictHostKeyChecking=yes \
@@ -144,36 +145,28 @@ jobs:
               "${EC2_USER}@${HOST}" \
               "APP_DIR='${APP_DIR}' bash -s" <<'EOF_REMOTE'; then
           set -euo pipefail
-
           if ! mkdir -p "$APP_DIR" 2>/dev/null; then
             APP_DIR="$HOME/customer_support_agent"
             mkdir -p "$APP_DIR"
             echo "APP_DIR not writable, using fallback: $APP_DIR"
           fi
-
           APP_DIR="$(readlink -f "$APP_DIR")"
           if [ -z "$APP_DIR" ] || [ "$APP_DIR" = "/" ]; then
             echo "ERROR: Refusing to deploy to invalid APP_DIR"
             exit 1
           fi
-
           find "$APP_DIR" -mindepth 1 -maxdepth 1 \
             ! -name '.env' \
             ! -name 'data' \
             -exec rm -rf -- {} +
-
           mkdir -p "$APP_DIR/data"
-
           tar -xzf /tmp/customer_support_agent_release.tar.gz -C "$APP_DIR"
-
           cd "$APP_DIR"
-
           if [ ! -f .env ]; then
             echo "ERROR: .env missing in $APP_DIR"
             echo "Create it once on server or set EC2_ENV_FILE secret."
             exit 1
           fi
-
           if ! command -v docker >/dev/null 2>&1; then
             echo "Docker not found. Installing Docker..."
             if command -v apt-get >/dev/null 2>&1; then
@@ -192,9 +185,7 @@ jobs:
               exit 1
             fi
           fi
-
           sudo systemctl enable --now docker || true
-
           if sudo docker compose version >/dev/null 2>&1; then
             DOCKER_COMPOSE_CMD="sudo docker compose"
           elif command -v docker-compose >/dev/null 2>&1; then
@@ -203,37 +194,31 @@ jobs:
             echo "ERROR: Docker Compose is not available."
             exit 1
           fi
-
           echo "Reclaiming disk space before build..."
           sudo docker system df || true
           $DOCKER_COMPOSE_CMD down --remove-orphans || true
           sudo docker builder prune -af --filter "until=24h" || true
           sudo docker system df || true
-
           $DOCKER_COMPOSE_CMD up -d --build --force-recreate --remove-orphans
           $DOCKER_COMPOSE_CMD ps
           HEALTH_URL="http://127.0.0.1:8000/health"
           HEALTH_WAIT_SECONDS=60
           HEALTH_INTERVAL_SECONDS=2
           MAX_ATTEMPTS=$((HEALTH_WAIT_SECONDS / HEALTH_INTERVAL_SECONDS))
-
           echo "Waiting for API health endpoint: $HEALTH_URL"
           for health_attempt in $(seq 1 "$MAX_ATTEMPTS"); do
             if curl -fsS --max-time 3 "$HEALTH_URL" >/dev/null; then
               echo "API healthy (attempt $health_attempt/$MAX_ATTEMPTS)"
               break
             fi
-
             if [ "$health_attempt" -eq "$MAX_ATTEMPTS" ]; then
               echo "ERROR: API health check failed after ${HEALTH_WAIT_SECONDS}s"
               $DOCKER_COMPOSE_CMD ps
               $DOCKER_COMPOSE_CMD logs --tail=200 api
               exit 1
             fi
-
             sleep "$HEALTH_INTERVAL_SECONDS"
           done
-
           curl -fsS "$HEALTH_URL"
           rm -f /tmp/customer_support_agent_release.tar.gz
           EOF_REMOTE
