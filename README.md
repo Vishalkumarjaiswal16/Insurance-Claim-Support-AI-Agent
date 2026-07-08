@@ -126,7 +126,7 @@ Available at:
 Start the Streamlit dashboard in a second terminal:
 
 ```bash
-uv run streamlit run app.py
+uv run --extra dashboard streamlit run app.py
 ```
 
 Dashboard URL:

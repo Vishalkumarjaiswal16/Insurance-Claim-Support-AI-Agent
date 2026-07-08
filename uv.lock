@@ -855,11 +855,13 @@ dependencies = [
 
 [package.optional-dependencies]
 dashboard = [
+    { name = "blinker" },
     { name = "streamlit" },
 ]
 
 [package.metadata]
 requires-dist = [
+    { name = "blinker", marker = "extra == 'dashboard'", specifier = ">=1.9.0" },
     { name = "chromadb", specifier = ">=1.5.8" },
     { name = "email-validator", specifier = ">=2.3.0" },
     { name = "fastapi", specifier = ">=0.136.1" },
